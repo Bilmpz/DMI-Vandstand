@@ -1637,6 +1637,9 @@
       $("til").value = fmtDateParts(def.til);
     }
     renderSeriesTable();
+    // Tabellen er tegnet forfra. Fokus bliver på den valgte radioknap.
+    const radio = Array.from($("seriesBody").querySelectorAll('input[type="radio"]')).find((r) => r.value === series.key);
+    if (radio) radio.focus();
     runPeriod({ excel: false });
   }
 
