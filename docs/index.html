@@ -36,6 +36,10 @@
             </div>
             <button class="btn btn-primary" type="submit">Søg</button>
           </form>
+          <label class="check" for="measuredToggle">
+            <input type="checkbox" id="measuredToggle">
+            <span>Vis kun steder med målinger (skjul havne uden måler)</span>
+          </label>
           <p class="msg msg-error" id="searchError" role="alert" hidden></p>
         </div>
       </div>
@@ -46,7 +50,6 @@
           <ul class="rows" id="resultRows"></ul>
           <p class="more">
             <button type="button" class="link" id="moreBtn">Vis 5 mere</button>
-            <button type="button" class="link" id="measuredToggle">Vis kun steder med målinger</button>
             <button type="button" class="link" id="closedToggle">Vis også nedlagte steder</button>
           </p>
         </div>

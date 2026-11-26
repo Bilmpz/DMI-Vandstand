@@ -231,6 +231,23 @@ input[type="text"]::placeholder {
   padding: 40px 0;
 }
 
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--blaek);
+  cursor: pointer;
+}
+
 .lead {
   max-width: 640px;
   margin-top: 8px;

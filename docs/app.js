@@ -2050,7 +2050,7 @@
     });
 
     $("closedToggle").textContent = opts.nedlagte ? "Vis kun steder med aktive stationer" : "Vis også nedlagte steder";
-    $("measuredToggle").textContent = opts.kunMaalt ? "Vis også havne uden måler" : "Vis kun steder med målinger";
+    $("measuredToggle").checked = !!opts.kunMaalt;
     $("moreBtn").hidden = !hasMore;
     $("results").hidden = false;
 
@@ -3520,7 +3520,7 @@
     $("searchForm").addEventListener("submit", (event) => {
       event.preventDefault();
       const postnr = $("postnr").value.trim();
-      const target = "#postnr=" + encodeURIComponent(postnr);
+      const target = searchHash(postnr, { nedlagte: false, kunMaalt: $("measuredToggle").checked, antal: 5 });
       if (location.hash === target) route();
       else location.hash = target;
     });
@@ -3536,7 +3536,8 @@
       location.hash = searchHash(state.lastPostnr, Object.assign({}, state.lastSearch, change));
     };
     $("closedToggle").addEventListener("click", () => changeSearch({ nedlagte: !state.lastSearch.nedlagte }));
-    $("measuredToggle").addEventListener("click", () => changeSearch({ kunMaalt: !state.lastSearch.kunMaalt }));
+    // Boksen virker med det samme efter en søgning, og ellers ved næste søgning
+    $("measuredToggle").addEventListener("change", () => changeSearch({ kunMaalt: $("measuredToggle").checked }));
     $("moreBtn").addEventListener("click", () => changeSearch({ antal: state.lastSearch.antal + 5 }));
     $("stopBtn").addEventListener("click", stopJob);
     $("shortcuts").addEventListener("click", (event) => {
