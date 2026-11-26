@@ -1,4 +1,4 @@
-/* DMI Vandstand v2.0. Ingen byggeværktøjer og ingen frameworks. */
+/* DMI Vandstand v2.1. Ingen byggeværktøjer og ingen frameworks. */
 (function (root) {
   "use strict";
 
@@ -1889,6 +1889,15 @@
     return start <= end ? { start, end } : null;
   }
 
+  // 15-minutters datasættet for én serie. Det bygges kun i den del af perioden, hvor serien findes,
+  // så kvarterer før seriens start ikke tælles som huller og ikke fylder i hukommelsen.
+  function seriesDataset(series, obs, period, gapEndMs, raw) {
+    const win = seriesWindow(series, period);
+    if (!win) return build15(EMPTY_SERIES, 0, -1);
+    const end = Math.min(period.end, win.end);
+    return raw ? buildRaw(obs, win.start, end) : build15(obs, win.start, end, Math.min(end, gapEndMs));
+  }
+
   // Henter én serie i perioden. Giver målingerne og de bidder, der ikke kunne hentes.
   async function loadSeries(series, period, signal, label) {
     const win = seriesWindow(series, period);
@@ -1946,7 +1955,7 @@
       if (job.signal.aborted || state.place !== place || state.shown !== series) return;
       markFetched();
 
-      const ds = build15(result.series, period.start, period.end, Math.min(period.end, now - GAP_GRACE));
+      const ds = seriesDataset(series, result.series, period, now - GAP_GRACE, false);
       const view = {
         place,
         series,
@@ -2508,7 +2517,7 @@
         obs = result.series;
         if (result.failed.length) missing.push(`${seriesName(s)}: ${failedRanges(result.failed).join(", ")}`);
       }
-      sets.push(raw ? buildRaw(obs, period.start, period.end) : build15(obs, period.start, period.end, gapEnd));
+      sets.push(seriesDataset(s, obs, period, gapEnd, raw));
     }
     $("progress").hidden = true;
 

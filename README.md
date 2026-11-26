@@ -1,6 +1,6 @@
 # DMI Vandstand
 
-Version 2.0 · [bilmpz.github.io/DMI-Vandstand](https://bilmpz.github.io/DMI-Vandstand/)
+Version 2.1 · [bilmpz.github.io/DMI-Vandstand](https://bilmpz.github.io/DMI-Vandstand/)
 
 Skriv et postnummer, og se vandstanden ved de fem nærmeste målesteder. Siden viser seneste måling, historik og DMI's prognose for de næste fem døgn, og alt kan hentes som en fil til Excel.
 
