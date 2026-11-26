@@ -1045,15 +1045,10 @@
   // ---------- Indlæsning ----------
 
   async function loadLists() {
+    // Sidens egne lister. GitHub Pages kan svare 503 et øjeblik lige efter en deploy, så der prøves igen.
     const [stationsFile, postnumre] = await Promise.all([
-      fetch(STATIONS_URL, { cache: "no-store" }).then((r) => {
-        if (!r.ok) throw new Error("stations.json");
-        return r.json();
-      }),
-      fetch(POSTNR_URL).then((r) => {
-        if (!r.ok) throw new Error("postnumre.json");
-        return r.json();
-      }),
+      getJsonRetry(STATIONS_URL, undefined, [800, 2500]),
+      getJsonRetry(POSTNR_URL, undefined, [800, 2500]),
     ]);
 
     state.stations = stationsFile.stations || [];
