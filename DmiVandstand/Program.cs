@@ -40,8 +40,7 @@ internal static class Program
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
-        NewLine = "
-", // samme fil på Windows og Linux
+        NewLine = "\n", // samme fil på Windows og Linux
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
         Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
