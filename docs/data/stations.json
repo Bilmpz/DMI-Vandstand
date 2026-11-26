@@ -1,15 +1,43 @@
 {
-  "generatedUtc": "2026-11-26T12:13:12Z",
+  "generatedUtc": "2026-11-26T17:48:31Z",
+  "sources": [
+    {
+      "name": "DMI",
+      "ok": true,
+      "stations": 178
+    },
+    {
+      "name": "SMHI",
+      "ok": true,
+      "stations": 60
+    },
+    {
+      "name": "PEGELONLINE",
+      "ok": true,
+      "stations": 50
+    },
+    {
+      "name": "Kystatlas",
+      "ok": true,
+      "stations": 2
+    },
+    {
+      "name": "DMI tidevand",
+      "ok": true,
+      "stations": 112
+    }
+  ],
   "stations": [
     {
       "id": "20676",
       "name": "Als Odde",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 56.7052,
       "lon": 10.3292,
       "from": "2012-05-23",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -20,14 +48,54 @@
       }
     },
     {
+      "id": "DE-9650024",
+      "sourceId": "b8d05bf9-2ef2-416d-ba70-b5dba74fe777",
+      "name": "Althagen",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.3718,
+      "lon": 12.419,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.979,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.3705,
+        "lon": 12.4233
+      }
+    },
+    {
+      "id": "SE-2545",
+      "sourceId": "2545",
+      "name": "Arkö",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 58.4831,
+      "lon": 16.9637,
+      "from": "2014-04-02",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "9020201",
       "name": "Assens Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.2706,
       "lon": 9.8897,
       "from": "2000-11-21",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -40,12 +108,13 @@
     {
       "id": "9020202",
       "name": "Assens Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.2706,
       "lon": 9.8897,
       "from": "2000-11-21",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -58,12 +127,13 @@
     {
       "id": "28548",
       "name": "Bagenkop Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 54.7517,
       "lon": 10.6724,
       "from": "2012-01-01",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg"
@@ -77,12 +147,13 @@
     {
       "id": "28547",
       "name": "Bagenkop Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 54.7516,
       "lon": 10.6724,
       "from": "2021-10-11",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -94,14 +165,61 @@
       }
     },
     {
+      "id": "DE-9510063",
+      "sourceId": "e8daa3e2-77d1-4cfa-9ac9-501e7b2b4b0a",
+      "name": "Bake A",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 53.9844,
+      "lon": 8.3151,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.087,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 53.9918,
+        "lon": 8.3196
+      }
+    },
+    {
+      "id": "DE-9510066",
+      "sourceId": "104fdc24-1dc6-4cb7-b44f-10bd02e13f40",
+      "name": "Bake Z",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 54.0135,
+      "lon": 8.3146,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.031,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 54.0084,
+        "lon": 8.3196
+      }
+    },
+    {
       "id": "27084",
       "name": "Ballen Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.8155,
       "lon": 10.6399,
       "from": "2012-01-01",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg"
@@ -115,12 +233,13 @@
     {
       "id": "27083",
       "name": "Ballen Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.8155,
       "lon": 10.6399,
       "from": "2021-10-11",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -134,12 +253,13 @@
     {
       "id": "9006601",
       "name": "Ballum Sluse",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.1308,
       "lon": 8.6858,
       "from": "1990-09-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -152,12 +272,13 @@
     {
       "id": "9030501",
       "name": "Bandholm Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 54.8368,
       "lon": 11.4879,
       "from": "2011-03-24",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -171,12 +292,13 @@
     {
       "id": "9030502",
       "name": "Bandholm Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 54.8368,
       "lon": 11.4879,
       "from": "2011-03-24",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -187,14 +309,82 @@
       }
     },
     {
+      "id": "DE-9650040",
+      "sourceId": "09227288-8c72-4b12-88fe-8765d1b2b400",
+      "name": "Barhöft",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.4345,
+      "lon": 13.0322,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.977,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.4371,
+        "lon": 13.0344
+      }
+    },
+    {
+      "id": "SE-2099",
+      "sourceId": "2099",
+      "name": "Barsebäck",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 55.7564,
+      "lon": 12.9033,
+      "from": "1937-01-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.754,
+        "lon": 12.8955
+      }
+    },
+    {
+      "id": "DE-9650030",
+      "sourceId": "00c33ed9-6bea-45b4-8728-7edc7e43e2f3",
+      "name": "Barth",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.3712,
+      "lon": 12.7232,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.98,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.3871,
+        "lon": 12.7288
+      }
+    },
+    {
       "id": "9020101",
       "name": "Bogense Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.5663,
       "lon": 10.08,
       "from": "2000-11-29",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -207,12 +397,13 @@
     {
       "id": "9020102",
       "name": "Bogense Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.5663,
       "lon": 10.08,
       "from": "2000-11-29",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -225,26 +416,89 @@
     {
       "id": "9005213",
       "name": "Bork Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.8494,
       "lon": 8.2794,
       "from": "2001-05-28",
-      "to": null,
       "parameters": [
         "sea_reg"
+      ]
+    },
+    {
+      "id": "DE-9340020",
+      "sourceId": "8727ebfd-e2e1-43da-ab3d-fee48cff9acc",
+      "name": "Borkum Fischerbalje",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 53.5574,
+      "lon": 6.7479,
+      "from": "",
+      "parameters": [
+        "W"
       ],
-      "forecast": null
+      "gaugeZeroNhn": -5.04,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 53.5584,
+        "lon": 6.7365
+      }
+    },
+    {
+      "id": "DE-9340030",
+      "sourceId": "478f21e9-906b-4c6f-a009-b5eabb052746",
+      "name": "Borkum Südstrand",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 53.5769,
+      "lon": 6.6614,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.02,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 53.575,
+        "lon": 6.6532
+      }
+    },
+    {
+      "id": "SE-35109",
+      "sourceId": "35109",
+      "name": "Brofjorden",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 58.336,
+      "lon": 11.4047,
+      "from": "2009-04-27",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
     },
     {
       "id": "9006901",
       "name": "Brøns Sluse I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.1863,
       "lon": 8.6875,
       "from": "2000-11-02",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -257,12 +511,13 @@
     {
       "id": "9006902",
       "name": "Brøns Sluse II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.1863,
       "lon": 8.6875,
       "from": "2000-11-02",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -273,14 +528,77 @@
       }
     },
     {
+      "id": "DE-9510095",
+      "sourceId": "5287a3e1-c540-4ab1-b52e-880d124cbc43",
+      "name": "Büsum",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 54.1218,
+      "lon": 8.8591,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.019,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 54.1251,
+        "lon": 8.8473
+      }
+    },
+    {
+      "id": "SE-35119",
+      "sourceId": "35119",
+      "name": "Bönan 2",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 60.7388,
+      "lon": 17.3177,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "DE-9570040",
+      "sourceId": "6233e901-2600-4b54-ae06-7b987934e99e",
+      "name": "Dagebüll",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 54.7305,
+      "lon": 8.687,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.005,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 54.7252,
+        "lon": 8.6807
+      }
+    },
+    {
       "id": "30361",
       "name": "Dragør Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.5935,
       "lon": 12.6785,
       "from": "2011-07-06",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -295,12 +613,13 @@
     {
       "id": "30363",
       "name": "Dragør Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.5935,
       "lon": 12.6785,
       "from": "2011-07-06",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -314,12 +633,13 @@
     {
       "id": "30357",
       "name": "Drogden Fyr",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.5364,
       "lon": 12.7113,
       "from": "2012-01-01",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg"
@@ -331,14 +651,77 @@
       }
     },
     {
+      "id": "SE-35185",
+      "sourceId": "35185",
+      "name": "E4 bron Södertälje",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 59.1847,
+      "lon": 17.6429,
+      "from": "2011-10-27",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "DE-9610045",
+      "sourceId": "1faa9b2c-c269-4662-af70-ef11da27cc1c",
+      "name": "Eckernförde",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.4747,
+      "lon": 9.836,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.003,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.4705,
+        "lon": 9.8539
+      }
+    },
+    {
+      "id": "DE-9530010",
+      "sourceId": "04acd7e5-3cbc-4cdd-b4a9-f452e868f4d6",
+      "name": "Eider-Sperrwerk Ap",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 54.2659,
+      "lon": 8.8421,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.02,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 54.2751,
+        "lon": 8.8195
+      }
+    },
+    {
       "id": "25136",
       "name": "Esbjerg Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.4713,
       "lon": 8.4237,
       "from": "2022-12-22",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -351,6 +734,8 @@
     {
       "id": "25148",
       "name": "Esbjerg Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.4602,
@@ -360,12 +745,13 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "25152",
       "name": "Esbjerg Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.4602,
@@ -375,18 +761,18 @@
       "parameters": [
         "sea_reg",
         "tw"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "9006401",
       "name": "Esbjerg Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.4716,
       "lon": 8.4237,
       "from": "1990-09-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -399,12 +785,13 @@
     {
       "id": "25149",
       "name": "Esbjerg Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.4606,
       "lon": 8.4431,
       "from": "1990-01-01",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -420,12 +807,13 @@
     {
       "id": "25151",
       "name": "Esbjerg Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.4606,
       "lon": 8.4431,
       "from": "2021-04-13",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -437,28 +825,50 @@
       }
     },
     {
+      "id": "SE-35213",
+      "sourceId": "35213",
+      "name": "Falkenberg",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 56.892,
+      "lon": 12.4895,
+      "from": "2014-11-18",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 56.8876,
+        "lon": 12.4927
+      }
+    },
+    {
       "id": "9005113",
       "name": "Felsted Kog/Klosterhul",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.2959,
       "lon": 8.2768,
       "from": "2001-05-28",
-      "to": null,
       "parameters": [
         "sea_reg"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "9004303",
       "name": "Ferring",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.5246,
       "lon": 8.1152,
       "from": "1994-08-25",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -469,8 +879,91 @@
       }
     },
     {
+      "id": "DE-9610010",
+      "sourceId": "9e19c411-f728-4a43-a057-39d4155c71cc",
+      "name": "Flensburg",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.7951,
+      "lon": 9.433,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.8122,
+        "lon": 9.4372
+      }
+    },
+    {
+      "id": "SE-35136",
+      "sourceId": "35136",
+      "name": "Flinten 16",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 55.561,
+      "lon": 12.8095,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.5623,
+        "lon": 12.8122
+      }
+    },
+    {
+      "id": "SE-35137",
+      "sourceId": "35137",
+      "name": "Flinten 7",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 55.5894,
+      "lon": 12.8445,
+      "from": "2017-03-24",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.5873,
+        "lon": 12.8399
+      }
+    },
+    {
+      "id": "SE-2179",
+      "sourceId": "2179",
+      "name": "Forsmark",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 60.4086,
+      "lon": 18.2108,
+      "from": "1975-08-06",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "23292",
       "name": "Fredericia Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.5602,
@@ -480,18 +973,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "23293",
       "name": "Fredericia Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.5595,
       "lon": 9.753,
       "from": "1991-10-31",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -507,12 +1000,13 @@
     {
       "id": "23289",
       "name": "Fredericia Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.5595,
       "lon": 9.753,
       "from": "2014-08-15",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -526,6 +1020,8 @@
     {
       "id": "20098",
       "name": "Frederikshavn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 57.4358,
@@ -535,18 +1031,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "20101",
       "name": "Frederikshavn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 57.4357,
       "lon": 10.5479,
       "from": "1991-12-03",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -562,12 +1058,13 @@
     {
       "id": "20102",
       "name": "Frederikshavn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 57.4357,
       "lon": 10.5479,
       "from": "2014-03-26",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -581,12 +1078,13 @@
     {
       "id": "30129",
       "name": "Frederikssund S",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.8278,
       "lon": 12.0626,
       "from": "2017-01-04",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -599,12 +1097,13 @@
     {
       "id": "30106",
       "name": "Frederiksværk Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.9653,
       "lon": 12.0005,
       "from": "2014-12-19",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -615,8 +1114,26 @@
       }
     },
     {
+      "id": "SE-2055",
+      "sourceId": "2055",
+      "name": "Furuögrund",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 64.9156,
+      "lon": 21.2307,
+      "from": "1916-01-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "26458",
       "name": "Fynshav Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 54.9947,
@@ -626,18 +1143,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "26457",
       "name": "Fynshav Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 54.9944,
       "lon": 9.9856,
       "from": "1991-10-30",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -653,12 +1170,13 @@
     {
       "id": "26459",
       "name": "Fynshav Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 54.9944,
       "lon": 9.9856,
       "from": "2014-06-04",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -672,12 +1190,13 @@
     {
       "id": "9020301",
       "name": "Fåborg Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.0934,
       "lon": 10.2412,
       "from": "2000-11-28",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -690,12 +1209,13 @@
     {
       "id": "9020302",
       "name": "Fåborg Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.0934,
       "lon": 10.2412,
       "from": "2000-11-28",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -708,6 +1228,8 @@
     {
       "id": "31618",
       "name": "Gedser Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 54.5723,
@@ -717,18 +1239,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "31616",
       "name": "Gedser Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 54.5721,
       "lon": 11.9245,
       "from": "1991-11-07",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -744,12 +1266,13 @@
     {
       "id": "31623",
       "name": "Gedser Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 54.5721,
       "lon": 11.9245,
       "from": "2014-05-02",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -761,14 +1284,61 @@
       }
     },
     {
+      "id": "DE-9650073",
+      "sourceId": "6b53ef42-5bd9-4366-ace3-442e307bec60",
+      "name": "Greifswald-Wieck",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.0977,
+      "lon": 13.4572,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.97,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.0954,
+        "lon": 13.4649
+      }
+    },
+    {
+      "id": "DE-9690078",
+      "sourceId": "087b6386-0957-4b47-af7d-ecd62f6d63ce",
+      "name": "Greifswalder Oie",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.2413,
+      "lon": 13.9072,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.968,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.2454,
+        "lon": 13.9094
+      }
+    },
+    {
       "id": "22121",
       "name": "Grenå Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.4121,
       "lon": 10.922,
       "from": "2012-01-01",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -783,12 +1353,13 @@
     {
       "id": "22122",
       "name": "Grenå Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.4121,
       "lon": 10.922,
       "from": "2014-04-15",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -802,12 +1373,13 @@
     {
       "id": "20299",
       "name": "Grønlandshavnen I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 57.0486,
       "lon": 10.052,
       "from": "2007-09-03",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -820,12 +1392,13 @@
     {
       "id": "25137",
       "name": "Grådyb Barre",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.4401,
       "lon": 8.2602,
       "from": "2000-11-28",
-      "to": null,
       "parameters": [
         "sea_reg",
         "sealev_ln"
@@ -839,12 +1412,13 @@
     {
       "id": "31473",
       "name": "Guldborgsundtunnel Falster",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 54.835,
       "lon": 11.8002,
       "from": "2018-04-24",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -855,14 +1429,143 @@
       }
     },
     {
+      "id": "SE-35236",
+      "sourceId": "35236",
+      "name": "Gävle Hamn",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 60.6967,
+      "lon": 17.2314,
+      "from": "2023-12-20",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-33095",
+      "sourceId": "33095",
+      "name": "Göteborg-Agnesberg",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Göteborgs stad",
+      "status": "aktiv",
+      "lat": 57.7898,
+      "lon": 12.0102,
+      "from": "2013-01-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-33096",
+      "sourceId": "33096",
+      "name": "Göteborg-Eriksberg",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Göteborgs stad",
+      "status": "aktiv",
+      "lat": 57.6966,
+      "lon": 11.9088,
+      "from": "2013-01-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-33097",
+      "sourceId": "33097",
+      "name": "Göteborg-Hisingsbron",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 57.7149,
+      "lon": 11.9687,
+      "from": "2023-04-12",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-33089",
+      "sourceId": "33089",
+      "name": "Göteborg-Krossholmen",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 57.6913,
+      "lon": 11.7712,
+      "from": "2021-08-25",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-33094",
+      "sourceId": "33094",
+      "name": "Göteborg-Lärjeholm",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "GBG",
+      "status": "aktiv",
+      "lat": 57.7658,
+      "lon": 12.0056,
+      "from": "2010-08-27",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-33093",
+      "sourceId": "33093",
+      "name": "Göteborg-Tingstadstunneln",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Göteborgs stad",
+      "status": "aktiv",
+      "lat": 57.7231,
+      "lon": 11.987,
+      "from": "2013-01-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-35120",
+      "sourceId": "35120",
+      "name": "Göteborg-Tångudden",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 57.6821,
+      "lon": 11.8722,
+      "from": "2019-03-25",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "9010101",
       "name": "Haderslev Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.2519,
       "lon": 9.5092,
       "from": "2000-12-12",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -875,12 +1578,13 @@
     {
       "id": "9010102",
       "name": "Haderslev Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.2519,
       "lon": 9.5092,
       "from": "2000-12-12",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -891,14 +1595,36 @@
       }
     },
     {
+      "id": "SE-35115",
+      "sourceId": "35115",
+      "name": "Halmstad 2",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 56.6512,
+      "lon": 12.8447,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 56.6542,
+        "lon": 12.8399
+      }
+    },
+    {
       "id": "20262",
       "name": "Hals Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 56.9901,
       "lon": 10.3084,
       "from": "2002-04-11",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -911,6 +1637,8 @@
     {
       "id": "21008",
       "name": "Hanstholm Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 57.1216,
@@ -920,18 +1648,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "21009",
       "name": "Hanstholm Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 57.12,
       "lon": 8.5955,
       "from": "1991-11-22",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -947,12 +1675,13 @@
     {
       "id": "21011",
       "name": "Hanstholm Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 57.12,
       "lon": 8.5955,
       "from": "2014-06-02",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -966,12 +1695,13 @@
     {
       "id": "20333",
       "name": "Haverslev Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 57.0284,
       "lon": 9.4017,
       "from": "2017-03-08",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -984,12 +1714,13 @@
     {
       "id": "9006801",
       "name": "Havneby Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.0871,
       "lon": 8.5654,
       "from": "1990-09-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1002,12 +1733,13 @@
     {
       "id": "9006802",
       "name": "Havneby Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.0871,
       "lon": 8.5654,
       "from": "2010-02-22",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1021,12 +1753,13 @@
     {
       "id": "29002",
       "name": "Havnebyen/Sjællands Odde",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.9728,
       "lon": 11.3694,
       "from": "2012-01-01",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg"
@@ -1038,14 +1771,84 @@
       }
     },
     {
+      "id": "DE-9610070",
+      "sourceId": "06219dd9-a2c4-463c-9619-623b3c026cbc",
+      "name": "Heiligenhafen",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.373,
+      "lon": 11.0057,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.998,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.3705,
+        "lon": 11.0205
+      }
+    },
+    {
+      "id": "DE-9510070",
+      "sourceId": "c0ec139b-13b4-4f86-bee3-06665ad81a40",
+      "name": "Helgoland Binnenhafen",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 54.1789,
+      "lon": 7.8899,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.015,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 54.1751,
+        "lon": 7.903
+      }
+    },
+    {
+      "id": "DE-9510075",
+      "sourceId": "0d8233b8-36c9-4a24-ad77-a4e7c617932f",
+      "name": "Helgoland Südhafen",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 54.175,
+      "lon": 7.8943,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.013,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 54.1751,
+        "lon": 7.903
+      }
+    },
+    {
       "id": "30328",
       "name": "Hellerup Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.7316,
       "lon": 12.5823,
       "from": "2022-05-31",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1056,14 +1859,36 @@
       }
     },
     {
+      "id": "SE-35110",
+      "sourceId": "35110",
+      "name": "Helsingborg",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 56.0446,
+      "lon": 12.6873,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 56.0374,
+        "lon": 12.6872
+      }
+    },
+    {
       "id": "9030301",
       "name": "Hesnæs Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 54.8231,
       "lon": 12.1373,
       "from": "2004-11-01",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1077,12 +1902,13 @@
     {
       "id": "9030302",
       "name": "Hesnæs Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 54.8231,
       "lon": 12.1373,
       "from": "2004-10-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1095,6 +1921,8 @@
     {
       "id": "20048",
       "name": "Hirtshals Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 57.5951,
@@ -1104,18 +1932,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "20049",
       "name": "Hirtshals Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 57.5942,
       "lon": 9.9622,
       "from": "2000-11-28",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1128,12 +1956,13 @@
     {
       "id": "20047",
       "name": "Hirtshals Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 57.5951,
       "lon": 9.9625,
       "from": "1992-01-07",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -1149,12 +1978,13 @@
     {
       "id": "20043",
       "name": "Hirtshals Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 57.5951,
       "lon": 9.9625,
       "from": "2014-03-26",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -1170,12 +2000,13 @@
     {
       "id": "20566",
       "name": "Hobro Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.6388,
       "lon": 9.8038,
       "from": "2011-12-28",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -1190,12 +2021,13 @@
     {
       "id": "20567",
       "name": "Hobro Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.6388,
       "lon": 9.8038,
       "from": "2011-12-28",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -1210,12 +2042,13 @@
     {
       "id": "29038",
       "name": "Holbæk Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.7214,
       "lon": 11.7089,
       "from": "2011-12-22",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -1230,12 +2063,13 @@
     {
       "id": "29039",
       "name": "Holbæk Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.7214,
       "lon": 11.7089,
       "from": "2011-12-22",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1247,14 +2081,31 @@
       }
     },
     {
+      "id": "SE-35124",
+      "sourceId": "35124",
+      "name": "Holmsund",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 63.7027,
+      "lon": 20.347,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "30017",
       "name": "Hornbæk Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.0934,
       "lon": 12.4571,
       "from": "1991-11-08",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -1270,6 +2121,8 @@
     {
       "id": "30018",
       "name": "Hornbæk Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 56.0934,
@@ -1279,18 +2132,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "30015",
       "name": "Hornbæk Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.0934,
       "lon": 12.4571,
       "from": "2021-10-11",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1304,12 +2157,13 @@
     {
       "id": "23128",
       "name": "Horsens Havn N",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.8561,
       "lon": 9.8673,
       "from": "2010-10-11",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1322,12 +2176,13 @@
     {
       "id": "23126",
       "name": "Horsens Havn S",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.8549,
       "lon": 9.8576,
       "from": "2007-01-26",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1340,12 +2195,13 @@
     {
       "id": "22598",
       "name": "Hov Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.9121,
       "lon": 10.2589,
       "from": "2011-12-28",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -1360,12 +2216,13 @@
     {
       "id": "22599",
       "name": "Hov Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.9121,
       "lon": 10.2589,
       "from": "2011-12-28",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1379,12 +2236,13 @@
     {
       "id": "30112",
       "name": "Hundested Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.9655,
       "lon": 11.8448,
       "from": "2014-12-19",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1397,12 +2255,13 @@
     {
       "id": "30396",
       "name": "Hundige Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.5984,
       "lon": 12.3565,
       "from": "2017-03-09",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1413,14 +2272,38 @@
       }
     },
     {
+      "id": "DE-9530020",
+      "sourceId": "e114aeec-c8d9-4d20-8fe1-8822058cb38b",
+      "name": "Husum",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 54.4723,
+      "lon": 9.0248,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.004,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 54.4752,
+        "lon": 8.9862
+      }
+    },
+    {
       "id": "9005210",
       "name": "Hvide Sande Fjord",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.9999,
       "lon": 8.1295,
       "from": "1990-12-03",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1433,12 +2316,13 @@
     {
       "id": "9005201",
       "name": "Hvide Sande Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.0005,
       "lon": 8.129,
       "from": "1990-10-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1451,12 +2335,13 @@
     {
       "id": "9005203",
       "name": "Hvide Sande Indsejling",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.0011,
       "lon": 8.1218,
       "from": "1990-10-05",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1468,14 +2353,58 @@
       }
     },
     {
+      "id": "KA-5205",
+      "sourceId": "5205",
+      "name": "Hvide Sande Indsejling",
+      "source": "Kystatlas",
+      "country": "DK",
+      "owner": "Kystdirektoratet",
+      "status": "aktiv",
+      "lat": 56.0011,
+      "lon": 8.1218,
+      "from": "2026-10-26",
+      "parameters": [
+        "vandstand"
+      ],
+      "forecast": {
+        "model": "dkss_nsbs",
+        "lat": 55.975,
+        "lon": 8.1251
+      }
+    },
+    {
+      "id": "DE-9570050",
+      "sourceId": "733755fd-628f-4130-a694-aaba340531ba",
+      "name": "Hörnum",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 54.7581,
+      "lon": 8.296,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.997,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 54.7585,
+        "lon": 8.3196
+      }
+    },
+    {
       "id": "23132",
       "name": "Juelsminde Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.7156,
       "lon": 10.0163,
       "from": "2012-01-01",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg"
@@ -1489,12 +2418,13 @@
     {
       "id": "23131",
       "name": "Juelsminde Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.7156,
       "lon": 10.0163,
       "from": "2021-10-11",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1506,14 +2436,31 @@
       }
     },
     {
+      "id": "SE-35101",
+      "sourceId": "35101",
+      "name": "Juten-Djurökvarn",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 58.632,
+      "lon": 16.3325,
+      "from": "2003-11-24",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "30119",
       "name": "Jægerspris Kignæs Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.8563,
       "lon": 12.0091,
       "from": "2017-03-23",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1524,14 +2471,63 @@
       }
     },
     {
+      "id": "SE-35103",
+      "sourceId": "35103",
+      "name": "Kalix-Karlsborg",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 65.7893,
+      "lon": 23.3006,
+      "from": "2009-08-25",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-2157",
+      "sourceId": "2157",
+      "name": "Kalix-Storön",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 65.697,
+      "lon": 23.096,
+      "from": "1974-08-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-35105",
+      "sourceId": "35105",
+      "name": "Kalmar 2",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 56.6589,
+      "lon": 16.3782,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "29141",
       "name": "Kalundborg Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.6736,
       "lon": 11.0973,
       "from": "2004-04-15",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1545,12 +2541,13 @@
     {
       "id": "9030201",
       "name": "Kalvehave I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 54.995,
       "lon": 12.1666,
       "from": "2000-12-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1563,12 +2560,13 @@
     {
       "id": "9030202",
       "name": "Kalvehave II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 54.995,
       "lon": 12.1666,
       "from": "2000-12-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1579,14 +2577,59 @@
       }
     },
     {
+      "id": "DE-9610035",
+      "sourceId": "b09f2243-60f0-469a-8f3b-0ea6abc83267",
+      "name": "Kappeln",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.6644,
+      "lon": 9.9379,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.991,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.6455,
+        "lon": 9.9511
+      }
+    },
+    {
+      "id": "SE-35131",
+      "sourceId": "35131",
+      "name": "Karlshamn",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 56.1546,
+      "lon": 14.8214,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 56.1541,
+        "lon": 14.8121
+      }
+    },
+    {
       "id": "9030101",
       "name": "Karrebæksminde I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.1766,
       "lon": 11.6471,
       "from": "2000-12-07",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1599,12 +2642,13 @@
     {
       "id": "9030102",
       "name": "Karrebæksminde II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.1766,
       "lon": 11.6471,
       "from": "2000-12-07",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1617,12 +2661,13 @@
     {
       "id": "30333",
       "name": "Kastrup Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.6426,
       "lon": 12.6514,
       "from": "2023-06-01",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1636,12 +2681,13 @@
     {
       "id": "9020401",
       "name": "Kerteminde Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.4508,
       "lon": 10.6651,
       "from": "2011-01-25",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1655,12 +2701,13 @@
     {
       "id": "9020402",
       "name": "Kerteminde Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.4508,
       "lon": 10.6651,
       "from": "2011-01-25",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1671,14 +2718,59 @@
       }
     },
     {
+      "id": "DE-9610066",
+      "sourceId": "3ad4013f-644b-47f5-a641-44b332bfecb2",
+      "name": "Kiel-Holtenau",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.3721,
+      "lon": 10.157,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.997,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.3705,
+        "lon": 10.1594
+      }
+    },
+    {
+      "id": "SE-2095",
+      "sourceId": "2095",
+      "name": "Klagshamn",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 55.5222,
+      "lon": 12.8936,
+      "from": "1929-11-13",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.5207,
+        "lon": 12.8955
+      }
+    },
+    {
       "id": "31282",
       "name": "Klintholm Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 54.953,
       "lon": 12.4651,
       "from": "2019-12-16",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1689,14 +2781,38 @@
       }
     },
     {
+      "id": "DE-9670050",
+      "sourceId": "905e7328-b8aa-4b08-9c22-c864101e462b",
+      "name": "Kloster",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.5848,
+      "lon": 13.1114,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.974,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.5788,
+        "lon": 13.1177
+      }
+    },
+    {
       "id": "23322",
       "name": "Kolding Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.4899,
       "lon": 9.4824,
       "from": "1999-06-16",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1709,12 +2825,13 @@
     {
       "id": "29395",
       "name": "Korsør Fiskerihavn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.3323,
       "lon": 11.1309,
       "from": "2020-02-17",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1727,6 +2844,8 @@
     {
       "id": "29392",
       "name": "Korsør Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.3355,
@@ -1736,18 +2855,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "29393",
       "name": "Korsør Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.3307,
       "lon": 11.1422,
       "from": "1991-10-19",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -1763,12 +2882,13 @@
     {
       "id": "29394",
       "name": "Korsør Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.3307,
       "lon": 11.1422,
       "from": "2014-05-13",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1780,14 +2900,70 @@
       }
     },
     {
+      "id": "DE-9690093",
+      "sourceId": "c0f33a36-cac4-4e47-a3f5-d1863c2f0f99",
+      "name": "Koserow",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.0604,
+      "lon": 14.0008,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.967,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.0621,
+        "lon": 14.0066
+      }
+    },
+    {
+      "id": "SE-2088",
+      "sourceId": "2088",
+      "name": "Kungsholmsfort",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 56.1052,
+      "lon": 15.5893,
+      "from": "1886-12-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-2130",
+      "sourceId": "2130",
+      "name": "Kungsvik",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 58.9967,
+      "lon": 11.1272,
+      "from": "1973-08-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "30121",
       "name": "Kyndbyværket",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.8117,
       "lon": 11.8773,
       "from": "2017-01-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1800,12 +2976,13 @@
     {
       "id": "30336",
       "name": "Københavns Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.6894,
       "lon": 12.5997,
       "from": "1999-06-24",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -1821,6 +2998,8 @@
     {
       "id": "30337",
       "name": "Københavns Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.6894,
@@ -1831,12 +3010,13 @@
         "sealev_dvr",
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "30338",
       "name": "Københavns Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.6894,
@@ -1846,12 +3026,13 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "30339",
       "name": "Københavns Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.6896,
@@ -1861,12 +3042,13 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "30341",
       "name": "Københavns Havn (Old)",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.7043,
@@ -1876,18 +3058,18 @@
       "parameters": [
         "sea_reg",
         "tw"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "30334",
       "name": "Københavns Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.6894,
       "lon": 12.5997,
       "from": "2023-10-31",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1901,12 +3083,13 @@
     {
       "id": "30478",
       "name": "Køge Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.4555,
       "lon": 12.1965,
       "from": "2011-12-21",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -1921,12 +3104,13 @@
     {
       "id": "30479",
       "name": "Køge Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.4555,
       "lon": 12.1965,
       "from": "2011-12-21",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1938,14 +3122,100 @@
       }
     },
     {
+      "id": "SE-2507",
+      "sourceId": "2507",
+      "name": "Landsort Norra",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 58.7687,
+      "lon": 17.8589,
+      "from": "2004-10-14",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "DE-9610015",
+      "sourceId": "5a33bf14-6bdc-4666-b2e3-ac78e3083e2a",
+      "name": "Langballigau",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.8233,
+      "lon": 9.6541,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.015,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.8289,
+        "lon": 9.6594
+      }
+    },
+    {
+      "id": "DE-9390010",
+      "sourceId": "a0c1dcb6-7812-48e6-8c01-f7edad7a2caf",
+      "name": "Langeoog",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 53.7232,
+      "lon": 7.5017,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.04,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 53.7251,
+        "lon": 7.5142
+      }
+    },
+    {
+      "id": "DE-9670063",
+      "sourceId": "91922b9b-ef7b-4aae-95a1-9d6a9e61969a",
+      "name": "Lauterbach",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.3416,
+      "lon": 13.4997,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.968,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.3371,
+        "lon": 13.5066
+      }
+    },
+    {
       "id": "24032",
       "name": "Lemvig Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 56.5507,
       "lon": 8.3067,
       "from": "2001-10-15",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1957,14 +3227,93 @@
       }
     },
     {
+      "id": "DE-9570070",
+      "sourceId": "5e92d73f-e4ea-42c1-9f98-91536c17cdff",
+      "name": "List auf Sylt",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 55.0165,
+      "lon": 8.4404,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.994,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 55.0086,
+        "lon": 8.4307
+      }
+    },
+    {
+      "id": "SE-35127",
+      "sourceId": "35127",
+      "name": "Ljusne Lotsstation",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 61.2069,
+      "lon": 17.1456,
+      "from": "2009-04-27",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "DE-9610050",
+      "sourceId": "736437d7-0f6f-41b7-bc69-5ed721da4f85",
+      "name": "Lt Kiel",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.4996,
+      "lon": 10.2733,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.987,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.4955,
+        "lon": 10.2705
+      }
+    },
+    {
+      "id": "SE-35209",
+      "sourceId": "35209",
+      "name": "Lunde",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 62.8807,
+      "lon": 17.8764,
+      "from": "2019-03-25",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "20423",
       "name": "Løgstør Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 56.9678,
       "lon": 9.2459,
       "from": "2000-05-23",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -1976,14 +3325,36 @@
       }
     },
     {
+      "id": "SE-35152",
+      "sourceId": "35152",
+      "name": "Malmö Hamn",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 55.6135,
+      "lon": 12.9976,
+      "from": "2009-04-27",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.6207,
+        "lon": 12.9927
+      }
+    },
+    {
       "id": "9007101",
       "name": "Mandø I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.2764,
       "lon": 8.5739,
       "from": "2000-11-02",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -1996,12 +3367,13 @@
     {
       "id": "9007102",
       "name": "Mandø II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.2764,
       "lon": 8.5739,
       "from": "2000-11-02",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2012,14 +3384,54 @@
       }
     },
     {
+      "id": "DE-9610075",
+      "sourceId": "8effc15d-8583-4ac6-9f42-1b63c47f92b0",
+      "name": "Marienleuchte",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.4966,
+      "lon": 11.2389,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.998,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.5038,
+        "lon": 11.2427
+      }
+    },
+    {
+      "id": "SE-35104",
+      "sourceId": "35104",
+      "name": "Marstrand",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 57.887,
+      "lon": 11.5936,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "28119",
       "name": "Middelfart Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.5064,
       "lon": 9.7362,
       "from": "2022-04-19",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2032,12 +3444,13 @@
     {
       "id": "28121",
       "name": "Middelfart Lystbådehavn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.4925,
       "lon": 9.7292,
       "from": "2024-11-14",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2048,14 +3461,54 @@
       }
     },
     {
+      "id": "DE-9510132",
+      "sourceId": "3ff99b92-4396-4fa7-af73-02b9c015dcad",
+      "name": "Mittelgrund",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 53.9421,
+      "lon": 8.6362,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.99,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 53.9418,
+        "lon": 8.6251
+      }
+    },
+    {
+      "id": "SE-35171",
+      "sourceId": "35171",
+      "name": "Måvholmsbådan",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 57.6723,
+      "lon": 11.7075,
+      "from": "2016-09-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "31417",
       "name": "Nakskov I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 54.828,
       "lon": 11.1363,
       "from": "2019-06-06",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2069,12 +3522,13 @@
     {
       "id": "9005112",
       "name": "Nees",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.4165,
       "lon": 8.1729,
       "from": "2023-08-28",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2085,8 +3539,79 @@
       }
     },
     {
+      "id": "DE-9670046",
+      "sourceId": "492f85b8-e5c6-439e-8e14-08ca78f10dce",
+      "name": "Neuendorf Hafen",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.5245,
+      "lon": 13.0936,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.976,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.5205,
+        "lon": 13.1038
+      }
+    },
+    {
+      "id": "DE-9610080",
+      "sourceId": "3f0b6b74-80a9-4576-a3cb-ea967dfc349f",
+      "name": "Neustadt",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.0965,
+      "lon": 10.805,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.017,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.0954,
+        "lon": 10.8122
+      }
+    },
+    {
+      "id": "DE-9360010",
+      "sourceId": "c0244c0e-6ae6-40cb-a967-4039b2a0ce7c",
+      "name": "Norderney Riffgat",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 53.6965,
+      "lon": 7.1578,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 53.6917,
+        "lon": 7.1531
+      }
+    },
+    {
       "id": "30346",
       "name": "Nordre Røse Fyr",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.6361,
@@ -2096,18 +3621,34 @@
       "parameters": [
         "sealev_dvr",
         "sea_reg"
-      ],
-      "forecast": null
+      ]
+    },
+    {
+      "id": "SE-35220",
+      "sourceId": "35220",
+      "name": "Norvik",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Stockholms Hamnar",
+      "status": "aktiv",
+      "lat": 58.9377,
+      "lon": 17.98,
+      "from": "2023-12-20",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
     },
     {
       "id": "31513",
       "name": "Nykøbing Falster Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 54.7701,
       "lon": 11.861,
       "from": "2022-04-19",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2120,12 +3661,13 @@
     {
       "id": "21138",
       "name": "Nykøbing Mors Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 56.7948,
       "lon": 8.8635,
       "from": "2005-08-18",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2138,12 +3680,13 @@
     {
       "id": "29014",
       "name": "Nykøbing Sjælland Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.9134,
       "lon": 11.6752,
       "from": "2018-01-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2154,14 +3697,31 @@
       }
     },
     {
+      "id": "SE-35112",
+      "sourceId": "35112",
+      "name": "Nynäshamn Fiskehamn",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 58.9006,
+      "lon": 17.9536,
+      "from": "2019-03-25",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "28068",
       "name": "ODENSE FJORD",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Ikke oplyst",
       "status": "aktiv",
       "lat": 55.4689,
       "lon": 10.5301,
       "from": "2010-08-30",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2174,12 +3734,13 @@
     {
       "id": "28087",
       "name": "Odense Fjord Stige Ø",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.4386,
       "lon": 10.4245,
       "from": "2015-08-10",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2192,12 +3753,13 @@
     {
       "id": "28086",
       "name": "Odense Kanal Stige Ø",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.4376,
       "lon": 10.4226,
       "from": "2000-05-23",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2208,14 +3770,114 @@
       }
     },
     {
+      "id": "SE-33084",
+      "sourceId": "33084",
+      "name": "Onsala",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Chalmers",
+      "status": "aktiv",
+      "lat": 57.3919,
+      "lon": 11.9189,
+      "from": "2015-06-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 57.3876,
+        "lon": 11.9233
+      }
+    },
+    {
+      "id": "SE-2085",
+      "sourceId": "2085",
+      "name": "Oskarshamn",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 57.2716,
+      "lon": 16.4798,
+      "from": "1960-09-15",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-35118",
+      "sourceId": "35118",
+      "name": "Oxelösund Lotsstation",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 58.6617,
+      "lon": 17.1248,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "DE-9550021",
+      "sourceId": "2852b9ab-d30e-4d04-ae06-3e946f48a0b1",
+      "name": "Pellworm Anleger",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 54.5009,
+      "lon": 8.702,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.027,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 54.5085,
+        "lon": 8.7085
+      }
+    },
+    {
+      "id": "DE-9650027",
+      "sourceId": "7d50c68c-3558-481d-bbe3-830f6f534a05",
+      "name": "Prerow",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.459,
+      "lon": 12.5718,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.979,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.4621,
+        "lon": 12.576
+      }
+    },
+    {
       "id": "31212",
       "name": "Præstø Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.1251,
       "lon": 12.0425,
       "from": "2019-12-16",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2228,12 +3890,13 @@
     {
       "id": "22058",
       "name": "Randers Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.4569,
       "lon": 10.0396,
       "from": "2011-12-28",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -2248,12 +3911,13 @@
     {
       "id": "22059",
       "name": "Randers Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.4569,
       "lon": 10.0396,
       "from": "2011-12-28",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2265,14 +3929,31 @@
       }
     },
     {
+      "id": "SE-2056",
+      "sourceId": "2056",
+      "name": "Ratan",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 63.9861,
+      "lon": 20.895,
+      "from": "1891-10-26",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "29336",
       "name": "Reersø Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.5173,
       "lon": 11.1194,
       "from": "2022-02-21",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2285,12 +3966,13 @@
     {
       "id": "9006701",
       "name": "Ribe Kammersluse I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.34,
       "lon": 8.676,
       "from": "1990-09-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2303,12 +3985,13 @@
     {
       "id": "9006703",
       "name": "Ribe Kammersluse II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.3405,
       "lon": 8.6724,
       "from": "2000-11-01",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2319,14 +4002,36 @@
       }
     },
     {
+      "id": "SE-2105",
+      "sourceId": "2105",
+      "name": "Ringhals",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 57.2497,
+      "lon": 12.1125,
+      "from": "1967-11-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 57.2459,
+        "lon": 12.1177
+      }
+    },
+    {
       "id": "9005212",
       "name": "Ringkøbing Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.0875,
       "lon": 8.2396,
       "from": "2001-05-28",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2339,12 +4044,13 @@
     {
       "id": "30407",
       "name": "Roskilde Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.6509,
       "lon": 12.0771,
       "from": "2011-12-20",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -2359,12 +4065,13 @@
     {
       "id": "30409",
       "name": "Roskilde Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.6509,
       "lon": 12.0771,
       "from": "2011-12-21",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2376,8 +4083,33 @@
       }
     },
     {
+      "id": "DE-9690077",
+      "sourceId": "1fa822e6-fb0c-4331-83f1-749972046dca",
+      "name": "Ruden",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.2043,
+      "lon": 13.7719,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.968,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.2038,
+        "lon": 13.7844
+      }
+    },
+    {
       "id": "31572",
       "name": "Rødbyhavns Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 54.6551,
@@ -2387,18 +4119,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "31573",
       "name": "Rødbyhavns Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 54.6561,
       "lon": 11.3475,
       "from": "1989-09-20",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -2414,12 +4146,13 @@
     {
       "id": "31574",
       "name": "Rødbyhavns Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 54.6561,
       "lon": 11.3475,
       "from": "2014-05-02",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2433,12 +4166,13 @@
     {
       "id": "31063",
       "name": "Rødvig Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.2543,
       "lon": 12.3744,
       "from": "2012-01-01",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg"
@@ -2452,12 +4186,13 @@
     {
       "id": "31061",
       "name": "Rødvig Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.2543,
       "lon": 12.3744,
       "from": "2021-10-11",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2471,12 +4206,13 @@
     {
       "id": "20412",
       "name": "Rønbjerg Huse Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 56.8924,
       "lon": 9.1668,
       "from": "2001-10-30",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2490,12 +4226,13 @@
     {
       "id": "9030401",
       "name": "Rønne Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.0932,
       "lon": 14.6896,
       "from": "2004-11-01",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2509,12 +4246,13 @@
     {
       "id": "9030402",
       "name": "Rønne Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 55.0932,
       "lon": 14.6896,
       "from": "2004-10-18",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2527,12 +4265,13 @@
     {
       "id": "29006",
       "name": "Rørvig Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.9436,
       "lon": 11.7685,
       "from": "2018-01-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2545,12 +4284,13 @@
     {
       "id": "31463",
       "name": "Sakskøbing Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 54.8023,
       "lon": 11.6353,
       "from": "2018-04-24",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2561,8 +4301,139 @@
       }
     },
     {
+      "id": "DE-9670065",
+      "sourceId": "9e7b2a4d-cfe8-4524-8a1e-c196ea897e9f",
+      "name": "Sassnitz",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.5083,
+      "lon": 13.6367,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.966,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.5038,
+        "lon": 13.6316
+      }
+    },
+    {
+      "id": "DE-9510060",
+      "sourceId": "f0197bcf-6846-4c0a-9659-0c2626a9bcf0",
+      "name": "Scharhörn",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 53.967,
+      "lon": 8.4626,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.005,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 53.9751,
+        "lon": 8.4585
+      }
+    },
+    {
+      "id": "DE-9610025",
+      "sourceId": "70d4f87f-4489-455a-a435-d6df9e09a87e",
+      "name": "Schleimünde Sp",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.6727,
+      "lon": 10.0367,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.001,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.6705,
+        "lon": 10.0483
+      }
+    },
+    {
+      "id": "DE-9610040",
+      "sourceId": "09370c05-1041-4395-a5d4-b8db6e59c4c8",
+      "name": "Schleswig",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.5114,
+      "lon": 9.5691,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.018,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.5122,
+        "lon": 9.5622
+      }
+    },
+    {
+      "id": "SE-35200",
+      "sourceId": "35200",
+      "name": "Simpevarp",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 57.4093,
+      "lon": 16.6756,
+      "from": "2016-05-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-2320",
+      "sourceId": "2320",
+      "name": "Simrishamn",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 55.5576,
+      "lon": 14.3577,
+      "from": "1982-06-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.5623,
+        "lon": 14.3538
+      }
+    },
+    {
       "id": "20002",
       "name": "Skagen Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 57.7165,
@@ -2572,18 +4443,18 @@
       "parameters": [
         "sealev_dvr",
         "sea_reg"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "20003",
       "name": "Skagen Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 57.7165,
       "lon": 10.5951,
       "from": "2000-11-28",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2594,14 +4465,52 @@
       }
     },
     {
+      "id": "SE-35138",
+      "sourceId": "35138",
+      "name": "Skagsudde 2",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 63.1905,
+      "lon": 19.0123,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-30488",
+      "sourceId": "30488",
+      "name": "Skanör",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 55.4168,
+      "lon": 12.8296,
+      "from": "1992-02-17",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.4206,
+        "lon": 12.826
+      }
+    },
+    {
       "id": "21191",
       "name": "Skive Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 56.5701,
       "lon": 9.0519,
       "from": "2000-07-24",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2615,12 +4524,13 @@
     {
       "id": "29422",
       "name": "Skælskør Fjord",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.2458,
       "lon": 11.2469,
       "from": "2020-12-02",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2633,12 +4543,13 @@
     {
       "id": "29421",
       "name": "Skælskør Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.2518,
       "lon": 11.2879,
       "from": "2020-12-02",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2651,12 +4562,13 @@
     {
       "id": "30042",
       "name": "Sletten Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.9534,
       "lon": 12.5353,
       "from": "2017-03-21",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2669,6 +4581,8 @@
     {
       "id": "28232",
       "name": "Slipshavn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.288,
@@ -2678,12 +4592,13 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "28233",
       "name": "Slipshavn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 55.288,
@@ -2693,18 +4608,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "28234",
       "name": "Slipshavn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.2878,
       "lon": 10.8264,
       "from": "1996-11-18",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -2720,12 +4635,13 @@
     {
       "id": "28231",
       "name": "Slipshavn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.2878,
       "lon": 10.8264,
       "from": "2021-10-11",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2737,14 +4653,93 @@
       }
     },
     {
+      "id": "SE-2111",
+      "sourceId": "2111",
+      "name": "Smögen",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 58.3536,
+      "lon": 11.2178,
+      "from": "1910-06-20",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "DE-9410010",
+      "sourceId": "662c4b5e-0241-456d-ac7d-9f62fd95c0d1",
+      "name": "Spiekeroog",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 53.7492,
+      "lon": 7.6819,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.08,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 53.7417,
+        "lon": 7.6808
+      }
+    },
+    {
+      "id": "SE-2061",
+      "sourceId": "2061",
+      "name": "Spikarna",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 62.3633,
+      "lon": 17.5311,
+      "from": "1968-09-24",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "DE-9650070",
+      "sourceId": "340707f4-5d35-4898-8b34-95ea3f4206b3",
+      "name": "Stahlbrode",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.2345,
+      "lon": 13.2897,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.971,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.2371,
+        "lon": 13.2844
+      }
+    },
+    {
       "id": "31272",
       "name": "Stege Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 54.9838,
       "lon": 12.2803,
       "from": "2019-12-16",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2755,14 +4750,85 @@
       }
     },
     {
+      "id": "SE-2110",
+      "sourceId": "2110",
+      "name": "Stenungsund",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 58.0885,
+      "lon": 11.8202,
+      "from": "1962-08-13",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-35233",
+      "sourceId": "35233",
+      "name": "Stockholm Frihamnen",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 59.3463,
+      "lon": 18.1271,
+      "from": "2023-08-02",
+      "parameters": [
+        "smhi_rh2000"
+      ]
+    },
+    {
+      "id": "SE-2069",
+      "sourceId": "2069",
+      "name": "Stockholm-Skeppsholmen",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 59.3242,
+      "lon": 18.0817,
+      "from": "1889-01-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "DE-9650043",
+      "sourceId": "b9163121-2747-4d2b-bcf5-ab5ff7396e56",
+      "name": "Stralsund",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.3057,
+      "lon": 13.119,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.975,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.3038,
+        "lon": 13.1316
+      }
+    },
+    {
       "id": "24053",
       "name": "Struer",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 56.4945,
       "lon": 8.5854,
       "from": "2015-01-22",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2773,14 +4839,31 @@
       }
     },
     {
+      "id": "SE-35183",
+      "sourceId": "35183",
+      "name": "Strömören",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 65.5484,
+      "lon": 22.238,
+      "from": "2016-09-15",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "27000",
       "name": "Svendborg",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.0604,
       "lon": 10.6214,
       "from": "2018-01-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2793,12 +4876,13 @@
     {
       "id": "9010201",
       "name": "Sønderborg Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 54.9107,
       "lon": 9.7853,
       "from": "2000-12-15",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2811,12 +4895,13 @@
     {
       "id": "9010202",
       "name": "Sønderborg Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 54.9107,
       "lon": 9.7853,
       "from": "2000-12-15",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2829,12 +4914,13 @@
     {
       "id": "32048",
       "name": "Tejn Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.249,
       "lon": 14.8368,
       "from": "1992-08-19",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -2848,14 +4934,38 @@
       }
     },
     {
+      "id": "DE-9670067",
+      "sourceId": "d1c9bb3c-2929-46a8-a338-adfddf0ef524",
+      "name": "Thiessow",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.2807,
+      "lon": 13.7098,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.969,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.2871,
+        "lon": 13.701
+      }
+    },
+    {
       "id": "21058",
       "name": "Thisted Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 56.9538,
       "lon": 8.6941,
       "from": "2001-10-26",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2869,12 +4979,13 @@
     {
       "id": "9005110",
       "name": "Thorsminde Fjord",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.3716,
       "lon": 8.1259,
       "from": "1990-12-03",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2887,12 +4998,13 @@
     {
       "id": "9005101",
       "name": "Thorsminde Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.3704,
       "lon": 8.1201,
       "from": "1990-10-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2905,12 +5017,13 @@
     {
       "id": "9005103",
       "name": "Thorsminde Kyst I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.3726,
       "lon": 8.1136,
       "from": "1990-10-26",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -2924,12 +5037,13 @@
     {
       "id": "9005104",
       "name": "Thorsminde Kyst II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.3726,
       "lon": 8.1136,
       "from": "2018-08-28",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2942,12 +5056,13 @@
     {
       "id": "9004201",
       "name": "Thyborøn Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.7053,
       "lon": 8.2225,
       "from": "1990-10-03",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2958,14 +5073,35 @@
       }
     },
     {
+      "id": "KA-4202",
+      "sourceId": "4202",
+      "name": "Thyborøn Havn",
+      "source": "Kystatlas",
+      "country": "DK",
+      "owner": "Kystdirektoratet",
+      "status": "aktiv",
+      "lat": 56.705,
+      "lon": 8.2238,
+      "from": "2026-10-29",
+      "parameters": [
+        "vandstand"
+      ],
+      "forecast": {
+        "model": "dkss_lf",
+        "lat": 56.7059,
+        "lon": 8.2241
+      }
+    },
+    {
       "id": "9004203",
       "name": "Thyborøn Kyst",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 56.7077,
       "lon": 8.2088,
       "from": "1990-10-03",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2976,14 +5112,38 @@
       }
     },
     {
+      "id": "DE-9630007",
+      "sourceId": "d22c341b-80c2-436d-98e1-8a2575bc975a",
+      "name": "Timmendorf Poel",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 53.992,
+      "lon": 11.3756,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.001,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 53.9954,
+        "lon": 11.3816
+      }
+    },
+    {
       "id": "22008",
       "name": "Udbyhøj Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.607,
       "lon": 10.3016,
       "from": "2021-11-17",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -2996,12 +5156,13 @@
     {
       "id": "22009",
       "name": "Udbyhøj Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.6105,
       "lon": 10.3054,
       "from": "2011-12-28",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -3014,14 +5175,52 @@
       }
     },
     {
+      "id": "SE-2541",
+      "sourceId": "2541",
+      "name": "Uddevalla",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 58.3451,
+      "lon": 11.9069,
+      "from": "2010-12-15",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-35133",
+      "sourceId": "35133",
+      "name": "Varberg 2",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 57.1095,
+      "lon": 12.2416,
+      "from": "2009-04-23",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 57.1126,
+        "lon": 12.2427
+      }
+    },
+    {
       "id": "30202",
       "name": "Vedbæk Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.8491,
       "lon": 12.5715,
       "from": "2011-12-20",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -3036,12 +5235,13 @@
     {
       "id": "30203",
       "name": "Vedbæk Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 55.8491,
       "lon": 12.5715,
       "from": "2011-12-21",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -3055,12 +5255,13 @@
     {
       "id": "23259",
       "name": "Vejle Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.7071,
       "lon": 9.5431,
       "from": "2005-04-07",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -3073,12 +5274,13 @@
     {
       "id": "27014",
       "name": "Vesterø Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 57.2961,
       "lon": 10.9241,
       "from": "2010-08-31",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -3091,6 +5293,8 @@
     {
       "id": "26359",
       "name": "Vidåslusen/Højer",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 54.9628,
@@ -3102,18 +5306,18 @@
         "sea_reg",
         "sealev_ln",
         "tw"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "9006501",
       "name": "Vidåslusen/Højer",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 54.9628,
       "lon": 8.6619,
       "from": "1990-09-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -3126,12 +5330,13 @@
     {
       "id": "9006502",
       "name": "Vidåslusen/Højer II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Kystdirektoratet",
       "status": "aktiv",
       "lat": 54.9628,
       "lon": 8.6619,
       "from": "2022-05-09",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -3142,14 +5347,68 @@
       }
     },
     {
+      "id": "SE-2228",
+      "sourceId": "2228",
+      "name": "Viken",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 56.1422,
+      "lon": 12.5792,
+      "from": "1976-04-22",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 56.1374,
+        "lon": 12.576
+      }
+    },
+    {
+      "id": "SE-35144",
+      "sourceId": "35144",
+      "name": "Vinga",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 57.6317,
+      "lon": 11.6088,
+      "from": "2009-04-27",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "SE-2080",
+      "sourceId": "2080",
+      "name": "Visby",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 57.6393,
+      "lon": 18.2845,
+      "from": "1916-01-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "31232",
       "name": "Vordingborg Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 54.9967,
       "lon": 11.8868,
       "from": "2019-12-16",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -3160,14 +5419,183 @@
       }
     },
     {
+      "id": "SE-35151",
+      "sourceId": "35151",
+      "name": "Västervik Lucernahamnen",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 57.7483,
+      "lon": 16.6753,
+      "from": "2009-04-27",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
+      "id": "DE-9640015",
+      "sourceId": "220ff4c6-83da-4a1b-9c13-dfee5a2a8798",
+      "name": "Warnemünde",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.1697,
+      "lon": 12.1034,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.979,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.1704,
+        "lon": 12.1038
+      }
+    },
+    {
+      "id": "DE-9630008",
+      "sourceId": "95a0ab45-a9ac-4f9a-93e9-b0ffa1c57b5f",
+      "name": "Wismar-Baumhaus",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 53.8988,
+      "lon": 11.4579,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.006,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 53.9121,
+        "lon": 11.4372
+      }
+    },
+    {
+      "id": "DE-9570010",
+      "sourceId": "9c4c11f2-0548-4555-beac-ecfd36f9bd74",
+      "name": "Wittdün",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 54.6318,
+      "lon": 8.3839,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.025,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 54.6252,
+        "lon": 8.4029
+      }
+    },
+    {
+      "id": "DE-9670055",
+      "sourceId": "4b348b56-b08c-4522-9042-49c1edb45d0d",
+      "name": "Wittower Fähre",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "OSTSEE",
+      "status": "aktiv",
+      "lat": 54.5576,
+      "lon": 13.2451,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -4.97,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 54.5538,
+        "lon": 13.2427
+      }
+    },
+    {
+      "id": "SE-35159",
+      "sourceId": "35159",
+      "name": "Ystad 2",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "Sjöfartsverket",
+      "status": "aktiv",
+      "lat": 55.4227,
+      "lon": 13.8256,
+      "from": "2014-11-13",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ],
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.4206,
+        "lon": 13.826
+      }
+    },
+    {
+      "id": "DE-9510010",
+      "sourceId": "e574d0af-5c63-4306-b1d3-43b7359de06d",
+      "name": "Zehnerloch",
+      "source": "PEGELONLINE",
+      "country": "DE",
+      "owner": "WSV",
+      "water": "NORDSEE",
+      "status": "aktiv",
+      "lat": 53.9555,
+      "lon": 8.6582,
+      "from": "",
+      "parameters": [
+        "W"
+      ],
+      "gaugeZeroNhn": -5.023,
+      "gaugeZeroFrom": "2019-11-01",
+      "forecast": {
+        "model": "dkss_ws",
+        "lat": 53.9584,
+        "lon": 8.6529
+      }
+    },
+    {
+      "id": "SE-2083",
+      "sourceId": "2083",
+      "name": "Ölands Norra Udde",
+      "source": "SMHI",
+      "country": "SE",
+      "owner": "SMHI",
+      "status": "aktiv",
+      "lat": 57.3663,
+      "lon": 17.0971,
+      "from": "1851-08-01",
+      "parameters": [
+        "smhi_rh2000",
+        "smhi_mw"
+      ]
+    },
+    {
       "id": "26239",
       "name": "Åbenrå Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 55.0448,
       "lon": 9.427,
       "from": "1996-10-05",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -3180,12 +5608,13 @@
     {
       "id": "20302",
       "name": "Ålborg Øst I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "Havn/kommune",
       "status": "aktiv",
       "lat": 57.0525,
       "lon": 9.9576,
       "from": "2002-05-07",
-      "to": null,
       "parameters": [
         "sea_reg"
       ],
@@ -3198,6 +5627,8 @@
     {
       "id": "22332",
       "name": "Århus Havn",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "nedlagt",
       "lat": 56.1693,
@@ -3207,18 +5638,18 @@
       "parameters": [
         "sea_reg",
         "sealev_ln"
-      ],
-      "forecast": null
+      ]
     },
     {
       "id": "22331",
       "name": "Århus Havn I",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.1466,
       "lon": 10.2226,
       "from": "1992-07-30",
-      "to": null,
       "parameters": [
         "sealev_dvr",
         "sea_reg",
@@ -3234,12 +5665,13 @@
     {
       "id": "22333",
       "name": "Århus Havn II",
+      "source": "DMI",
+      "country": "DK",
       "owner": "DMI",
       "status": "aktiv",
       "lat": 56.1466,
       "lon": 10.2226,
       "from": "2014-04-08",
-      "to": null,
       "parameters": [
         "sea_reg",
         "tw"
@@ -3251,5 +5683,1147 @@
       }
     }
   ],
-  "forecastPending": []
+  "tides": [
+    {
+      "id": "tide-20002",
+      "stationId": "20002",
+      "name": "Skagen Havn",
+      "lat": 57.7165,
+      "lon": 10.5951,
+      "lowAstronomicalTide": -25.3,
+      "meanLowWaterSpring": -16.4
+    },
+    {
+      "id": "tide-20047",
+      "stationId": "20047",
+      "name": "Hirtshals",
+      "lat": 57.5951,
+      "lon": 9.9625,
+      "lowAstronomicalTide": -23,
+      "meanLowWaterSpring": -15.7
+    },
+    {
+      "id": "tide-20101",
+      "stationId": "20101",
+      "name": "Frederikshavn",
+      "lat": 57.4357,
+      "lon": 10.5479,
+      "lowAstronomicalTide": -27.1,
+      "meanLowWaterSpring": -16
+    },
+    {
+      "id": "tide-20252",
+      "stationId": "20252",
+      "name": "Hals Barre",
+      "lat": 56.9547,
+      "lon": 10.4255,
+      "lowAstronomicalTide": -27.9,
+      "meanLowWaterSpring": -16.9
+    },
+    {
+      "id": "tide-20262",
+      "stationId": "20262",
+      "name": "Hals Havn",
+      "lat": 56.9901,
+      "lon": 10.3084,
+      "lowAstronomicalTide": -26.3,
+      "meanLowWaterSpring": -16.4
+    },
+    {
+      "id": "tide-20299",
+      "stationId": "20299",
+      "name": "Grønlandshavnen, Aalborg",
+      "lat": 57.0486,
+      "lon": 10.052,
+      "lowAstronomicalTide": -22.1,
+      "meanLowWaterSpring": -14.2
+    },
+    {
+      "id": "tide-20303",
+      "stationId": "20303",
+      "name": "Aalborg Øst",
+      "lat": 57.0525,
+      "lon": 9.9576,
+      "lowAstronomicalTide": -20.8,
+      "meanLowWaterSpring": -12.4
+    },
+    {
+      "id": "tide-20333",
+      "stationId": "20333",
+      "name": "Haverslev Havn",
+      "lat": 57.0284,
+      "lon": 9.4017,
+      "lowAstronomicalTide": -11.5,
+      "meanLowWaterSpring": -6.9
+    },
+    {
+      "id": "tide-20412",
+      "stationId": "20412",
+      "name": "Rønbjerg Huse",
+      "lat": 56.8924,
+      "lon": 9.1668,
+      "lowAstronomicalTide": -5.5,
+      "meanLowWaterSpring": -2.5
+    },
+    {
+      "id": "tide-20423",
+      "stationId": "20423",
+      "name": "Løgstør",
+      "lat": 56.9678,
+      "lon": 9.2459,
+      "lowAstronomicalTide": -6.2,
+      "meanLowWaterSpring": -3.6
+    },
+    {
+      "id": "tide-20567",
+      "stationId": "20567",
+      "name": "Hobro",
+      "lat": 56.6378,
+      "lon": 9.8094,
+      "lowAstronomicalTide": -12.5,
+      "meanLowWaterSpring": -7.6
+    },
+    {
+      "id": "tide-20575",
+      "stationId": "20575",
+      "name": "Saltfabrikken",
+      "lat": 56.6829,
+      "lon": 10.0384,
+      "lowAstronomicalTide": -12.7,
+      "meanLowWaterSpring": -7.7
+    },
+    {
+      "id": "tide-20577",
+      "stationId": "20577",
+      "name": "Hadsund Fiskerihavn",
+      "lat": 56.7168,
+      "lon": 10.1255,
+      "lowAstronomicalTide": -11.8,
+      "meanLowWaterSpring": -5.9
+    },
+    {
+      "id": "tide-20676",
+      "stationId": "20676",
+      "name": "Als Odde",
+      "lat": 56.7052,
+      "lon": 10.3292,
+      "lowAstronomicalTide": -20.9,
+      "meanLowWaterSpring": -13.7
+    },
+    {
+      "id": "tide-21009",
+      "stationId": "21009",
+      "name": "Hanstholm",
+      "lat": 57.12,
+      "lon": 8.5955,
+      "lowAstronomicalTide": -22.9,
+      "meanLowWaterSpring": -15.1
+    },
+    {
+      "id": "tide-21058",
+      "stationId": "21058",
+      "name": "Thisted",
+      "lat": 56.9538,
+      "lon": 8.6941,
+      "lowAstronomicalTide": -5,
+      "meanLowWaterSpring": -2
+    },
+    {
+      "id": "tide-21138",
+      "stationId": "21138",
+      "name": "Nykøbing Mors",
+      "lat": 56.7948,
+      "lon": 8.8635,
+      "lowAstronomicalTide": -4.1,
+      "meanLowWaterSpring": -1.3
+    },
+    {
+      "id": "tide-21191",
+      "stationId": "21191",
+      "name": "Skive",
+      "lat": 56.5701,
+      "lon": 9.0519,
+      "lowAstronomicalTide": -7,
+      "meanLowWaterSpring": -4.3
+    },
+    {
+      "id": "tide-22009",
+      "stationId": "22009",
+      "name": "Udbyhøj",
+      "lat": 56.607,
+      "lon": 10.3016,
+      "lowAstronomicalTide": -26.2,
+      "meanLowWaterSpring": -16.9
+    },
+    {
+      "id": "tide-22058",
+      "stationId": "22058",
+      "name": "Randers",
+      "lat": 56.4569,
+      "lon": 10.0396,
+      "lowAstronomicalTide": -28.6,
+      "meanLowWaterSpring": -21.7
+    },
+    {
+      "id": "tide-22121",
+      "stationId": "22121",
+      "name": "Grenå",
+      "lat": 56.4121,
+      "lon": 10.922,
+      "lowAstronomicalTide": -27.6,
+      "meanLowWaterSpring": -15.3
+    },
+    {
+      "id": "tide-22331",
+      "stationId": "22331",
+      "name": "Århus",
+      "lat": 56.1466,
+      "lon": 10.2226,
+      "lowAstronomicalTide": -33.1,
+      "meanLowWaterSpring": -20
+    },
+    {
+      "id": "tide-22598",
+      "stationId": "22598",
+      "name": "Hov",
+      "lat": 55.9121,
+      "lon": 10.2589,
+      "lowAstronomicalTide": -32.1,
+      "meanLowWaterSpring": -19.8
+    },
+    {
+      "id": "tide-23126",
+      "stationId": "23126",
+      "name": "Horsens Havn",
+      "lat": 55.8549,
+      "lon": 9.8576,
+      "lowAstronomicalTide": -37.1,
+      "meanLowWaterSpring": -24.9
+    },
+    {
+      "id": "tide-23132",
+      "stationId": "23132",
+      "name": "Juelsminde",
+      "lat": 55.7156,
+      "lon": 10.0163,
+      "lowAstronomicalTide": -34.1,
+      "meanLowWaterSpring": -21.9
+    },
+    {
+      "id": "tide-23259",
+      "stationId": "23259",
+      "name": "Vejle Havn",
+      "lat": 55.7071,
+      "lon": 9.5431,
+      "lowAstronomicalTide": -36,
+      "meanLowWaterSpring": -23
+    },
+    {
+      "id": "tide-23293",
+      "stationId": "23293",
+      "name": "Fredericia",
+      "lat": 55.5595,
+      "lon": 9.753,
+      "lowAstronomicalTide": -25.5,
+      "meanLowWaterSpring": -16.3
+    },
+    {
+      "id": "tide-23322",
+      "stationId": "23322",
+      "name": "Kolding Havn",
+      "lat": 55.4899,
+      "lon": 9.4824,
+      "lowAstronomicalTide": -10.3,
+      "meanLowWaterSpring": -5.3
+    },
+    {
+      "id": "tide-24006",
+      "stationId": "24006",
+      "name": "Thyborøn kyst",
+      "lat": 56.7077,
+      "lon": 8.2088,
+      "lowAstronomicalTide": -31.8,
+      "meanLowWaterSpring": -18.5
+    },
+    {
+      "id": "tide-24018",
+      "stationId": "24018",
+      "name": "Ferring",
+      "lat": 56.5246,
+      "lon": 8.1152,
+      "lowAstronomicalTide": -35.8,
+      "meanLowWaterSpring": -21.4
+    },
+    {
+      "id": "tide-24032",
+      "stationId": "24032",
+      "name": "Lemvig",
+      "lat": 56.5507,
+      "lon": 8.3068,
+      "lowAstronomicalTide": -14.8,
+      "meanLowWaterSpring": -10.7
+    },
+    {
+      "id": "tide-24053",
+      "stationId": "24053",
+      "name": "Struer",
+      "lat": 56.4945,
+      "lon": 8.5854,
+      "lowAstronomicalTide": -11.6,
+      "meanLowWaterSpring": -6.8
+    },
+    {
+      "id": "tide-24122",
+      "stationId": "24122",
+      "name": "Thorsminde kyst",
+      "lat": 56.3726,
+      "lon": 8.1136,
+      "lowAstronomicalTide": -36,
+      "meanLowWaterSpring": -24
+    },
+    {
+      "id": "tide-24342",
+      "stationId": "24342",
+      "name": "Hvide Sande kyst",
+      "lat": 55.9967,
+      "lon": 8.1098,
+      "lowAstronomicalTide": -55,
+      "meanLowWaterSpring": -40.8
+    },
+    {
+      "id": "tide-25137",
+      "stationId": "25137",
+      "name": "Grådyb Barre",
+      "lat": 55.4401,
+      "lon": 8.2602,
+      "lowAstronomicalTide": -120.9,
+      "meanLowWaterSpring": -96
+    },
+    {
+      "id": "tide-25139",
+      "stationId": "25139",
+      "name": "Nordby",
+      "lat": 55.45,
+      "lon": 8.4083,
+      "lowAstronomicalTide": -127.1,
+      "meanLowWaterSpring": -101.2
+    },
+    {
+      "id": "tide-25144",
+      "stationId": "25144",
+      "name": "Sønderho",
+      "lat": 55.3478,
+      "lon": 8.4749,
+      "lowAstronomicalTide": -58.6,
+      "meanLowWaterSpring": -42.8
+    },
+    {
+      "id": "tide-25149",
+      "stationId": "25149",
+      "name": "Esbjerg Havn",
+      "lat": 55.4602,
+      "lon": 8.4397,
+      "lowAstronomicalTide": -120.8,
+      "meanLowWaterSpring": -97.6
+    },
+    {
+      "id": "tide-25343",
+      "stationId": "25343",
+      "name": "Ribe kammersluse",
+      "lat": 55.34,
+      "lon": 8.676,
+      "lowAstronomicalTide": -104.4,
+      "meanLowWaterSpring": -85.6
+    },
+    {
+      "id": "tide-25346",
+      "stationId": "25346",
+      "name": "Mandø",
+      "lat": 55.2764,
+      "lon": 8.5739,
+      "lowAstronomicalTide": -88.8,
+      "meanLowWaterSpring": -76.3
+    },
+    {
+      "id": "tide-26089",
+      "stationId": "26089",
+      "name": "Haderslev",
+      "lat": 55.2519,
+      "lon": 9.5092,
+      "lowAstronomicalTide": -10.2,
+      "meanLowWaterSpring": -4.6
+    },
+    {
+      "id": "tide-26136",
+      "stationId": "26136",
+      "name": "Havneby",
+      "lat": 55.0871,
+      "lon": 8.5654,
+      "lowAstronomicalTide": -134.3,
+      "meanLowWaterSpring": -110
+    },
+    {
+      "id": "tide-26143",
+      "stationId": "26143",
+      "name": "Brøns sluse",
+      "lat": 55.1863,
+      "lon": 8.6875,
+      "lowAstronomicalTide": -39.6,
+      "meanLowWaterSpring": -23.9
+    },
+    {
+      "id": "tide-26239",
+      "stationId": "26239",
+      "name": "Aabenraa",
+      "lat": 55.0448,
+      "lon": 9.427,
+      "lowAstronomicalTide": -13.8,
+      "meanLowWaterSpring": -3.7
+    },
+    {
+      "id": "tide-26346",
+      "stationId": "26346",
+      "name": "Ballum sluse",
+      "lat": 55.1308,
+      "lon": 8.6858,
+      "lowAstronomicalTide": -67.9,
+      "meanLowWaterSpring": -51.9
+    },
+    {
+      "id": "tide-26361",
+      "stationId": "26361",
+      "name": "Højer/Vidåslusen",
+      "lat": 54.9628,
+      "lon": 8.6619,
+      "lowAstronomicalTide": -89.9,
+      "meanLowWaterSpring": -72.6
+    },
+    {
+      "id": "tide-26457",
+      "stationId": "26457",
+      "name": "Fynshav",
+      "lat": 54.9944,
+      "lon": 9.9856,
+      "lowAstronomicalTide": -13.7,
+      "meanLowWaterSpring": -3.8
+    },
+    {
+      "id": "tide-26458",
+      "stationId": "26458",
+      "name": "Mommark",
+      "lat": 54.9322,
+      "lon": 10.0445,
+      "lowAstronomicalTide": -13.6,
+      "meanLowWaterSpring": -3.4
+    },
+    {
+      "id": "tide-26473",
+      "stationId": "26473",
+      "name": "Sønderborg",
+      "lat": 54.9107,
+      "lon": 9.7853,
+      "lowAstronomicalTide": -13.4,
+      "meanLowWaterSpring": -3.8
+    },
+    {
+      "id": "tide-27000",
+      "stationId": "27000",
+      "name": "Svendborg Havn",
+      "lat": 55.0604,
+      "lon": 10.6214,
+      "lowAstronomicalTide": -16.8,
+      "meanLowWaterSpring": -8.2
+    },
+    {
+      "id": "tide-27003",
+      "stationId": "27003",
+      "name": "Rantzausminde Lystbådehavn",
+      "lat": 55.0332,
+      "lon": 10.5402,
+      "lowAstronomicalTide": -12.6,
+      "meanLowWaterSpring": -3.1
+    },
+    {
+      "id": "tide-27004",
+      "stationId": "27004",
+      "name": "Grasten, Thurø",
+      "lat": 55.0316,
+      "lon": 10.6681,
+      "lowAstronomicalTide": -31.2,
+      "meanLowWaterSpring": -16.3
+    },
+    {
+      "id": "tide-27014",
+      "stationId": "27014",
+      "name": "Vesterø Havn",
+      "lat": 57.2961,
+      "lon": 10.924,
+      "lowAstronomicalTide": -19.7,
+      "meanLowWaterSpring": -13.1
+    },
+    {
+      "id": "tide-27084",
+      "stationId": "27084",
+      "name": "Ballen",
+      "lat": 55.8155,
+      "lon": 10.6399,
+      "lowAstronomicalTide": -27.1,
+      "meanLowWaterSpring": -16.1
+    },
+    {
+      "id": "tide-28003",
+      "stationId": "28003",
+      "name": "Bogense",
+      "lat": 55.5663,
+      "lon": 10.08,
+      "lowAstronomicalTide": -32.9,
+      "meanLowWaterSpring": -21.4
+    },
+    {
+      "id": "tide-28068",
+      "stationId": "28068",
+      "name": "Odense Fjord, Gabet",
+      "lat": 55.516,
+      "lon": 10.5701,
+      "lowAstronomicalTide": -29.8,
+      "meanLowWaterSpring": -20.6
+    },
+    {
+      "id": "tide-28086",
+      "stationId": "28086",
+      "name": "Odense Kanal, Stige Ø",
+      "lat": 55.4376,
+      "lon": 10.4226,
+      "lowAstronomicalTide": -33.9,
+      "meanLowWaterSpring": -22.4
+    },
+    {
+      "id": "tide-28087",
+      "stationId": "28087",
+      "name": "Odense Fjord, Stige Ø",
+      "lat": 55.4386,
+      "lon": 10.4245,
+      "lowAstronomicalTide": -27.3,
+      "meanLowWaterSpring": -17.4
+    },
+    {
+      "id": "tide-28119",
+      "stationId": "28119",
+      "name": "Middelfart Havn",
+      "lat": 55.5064,
+      "lon": 9.7362,
+      "lowAstronomicalTide": -19.4,
+      "meanLowWaterSpring": -11
+    },
+    {
+      "id": "tide-28121",
+      "stationId": "28121",
+      "name": "Middelfart Lystbådehavn",
+      "lat": 55.4925,
+      "lon": 9.7292,
+      "lowAstronomicalTide": -9.2,
+      "meanLowWaterSpring": -4
+    },
+    {
+      "id": "tide-28198",
+      "stationId": "28198",
+      "name": "Kerteminde",
+      "lat": 55.4508,
+      "lon": 10.6651,
+      "lowAstronomicalTide": -24,
+      "meanLowWaterSpring": -16.3
+    },
+    {
+      "id": "tide-28234",
+      "stationId": "28234",
+      "name": "Slipshavn",
+      "lat": 55.2878,
+      "lon": 10.8264,
+      "lowAstronomicalTide": -28.5,
+      "meanLowWaterSpring": -17.2
+    },
+    {
+      "id": "tide-28366",
+      "stationId": "28366",
+      "name": "Assens Havn",
+      "lat": 55.2706,
+      "lon": 9.8897,
+      "lowAstronomicalTide": -10.6,
+      "meanLowWaterSpring": -2.5
+    },
+    {
+      "id": "tide-28397",
+      "stationId": "28397",
+      "name": "Fåborg",
+      "lat": 55.0934,
+      "lon": 10.2412,
+      "lowAstronomicalTide": -12.4,
+      "meanLowWaterSpring": -3.7
+    },
+    {
+      "id": "tide-28548",
+      "stationId": "28548",
+      "name": "Bagenkop",
+      "lat": 54.7517,
+      "lon": 10.6724,
+      "lowAstronomicalTide": -12.9,
+      "meanLowWaterSpring": -3
+    },
+    {
+      "id": "tide-28582",
+      "stationId": "28582",
+      "name": "Spodsbjerg",
+      "lat": 54.9347,
+      "lon": 10.8338,
+      "lowAstronomicalTide": -18.6,
+      "meanLowWaterSpring": -9.2
+    },
+    {
+      "id": "tide-29002",
+      "stationId": "29002",
+      "name": "Sjællands Odde",
+      "lat": 55.9727,
+      "lon": 11.3694,
+      "lowAstronomicalTide": -16.6,
+      "meanLowWaterSpring": -9.3
+    },
+    {
+      "id": "tide-29006",
+      "stationId": "29006",
+      "name": "Rørvig Havn",
+      "lat": 55.9436,
+      "lon": 11.7685,
+      "lowAstronomicalTide": -16.1,
+      "meanLowWaterSpring": -8.7
+    },
+    {
+      "id": "tide-29014",
+      "stationId": "29014",
+      "name": "Nykøbing Sjælland Havn",
+      "lat": 55.9134,
+      "lon": 11.6752,
+      "lowAstronomicalTide": -17.3,
+      "meanLowWaterSpring": -9.9
+    },
+    {
+      "id": "tide-29038",
+      "stationId": "29038",
+      "name": "Holbæk",
+      "lat": 55.7214,
+      "lon": 11.7089,
+      "lowAstronomicalTide": -17.5,
+      "meanLowWaterSpring": -10.3
+    },
+    {
+      "id": "tide-29141",
+      "stationId": "29141",
+      "name": "Kalundborg",
+      "lat": 55.6736,
+      "lon": 11.0973,
+      "lowAstronomicalTide": -25.6,
+      "meanLowWaterSpring": -15.5
+    },
+    {
+      "id": "tide-29336",
+      "stationId": "29336",
+      "name": "Reersø Havn",
+      "lat": 55.5173,
+      "lon": 11.1198,
+      "lowAstronomicalTide": -25.4,
+      "meanLowWaterSpring": -15.4
+    },
+    {
+      "id": "tide-29393",
+      "stationId": "29393",
+      "name": "Korsør",
+      "lat": 55.3306,
+      "lon": 11.1422,
+      "lowAstronomicalTide": -23.8,
+      "meanLowWaterSpring": -15
+    },
+    {
+      "id": "tide-29395",
+      "stationId": "29395",
+      "name": "Korsør Fiskerihavn",
+      "lat": 55.3323,
+      "lon": 11.1309,
+      "lowAstronomicalTide": -22.7,
+      "meanLowWaterSpring": -14.5
+    },
+    {
+      "id": "tide-29421",
+      "stationId": "29421",
+      "name": "Skælskør Havn",
+      "lat": 55.2518,
+      "lon": 11.2879,
+      "lowAstronomicalTide": -19.9,
+      "meanLowWaterSpring": -13.2
+    },
+    {
+      "id": "tide-29422",
+      "stationId": "29422",
+      "name": "Skælskør Fjord",
+      "lat": 55.2458,
+      "lon": 11.2469,
+      "lowAstronomicalTide": -20,
+      "meanLowWaterSpring": -13.6
+    },
+    {
+      "id": "tide-30017",
+      "stationId": "30017",
+      "name": "Hornbæk",
+      "lat": 56.0934,
+      "lon": 12.4571,
+      "lowAstronomicalTide": -15.7,
+      "meanLowWaterSpring": -8.1
+    },
+    {
+      "id": "tide-30042",
+      "stationId": "30042",
+      "name": "Sletten Havn, Humlebæk",
+      "lat": 55.9534,
+      "lon": 12.5353,
+      "lowAstronomicalTide": -15.6,
+      "meanLowWaterSpring": -8.4
+    },
+    {
+      "id": "tide-30106",
+      "stationId": "30106",
+      "name": "Frederiksværk",
+      "lat": 55.9653,
+      "lon": 12.0005,
+      "lowAstronomicalTide": -16.2,
+      "meanLowWaterSpring": -9.6
+    },
+    {
+      "id": "tide-30112",
+      "stationId": "30112",
+      "name": "Hundested",
+      "lat": 55.9655,
+      "lon": 11.8448,
+      "lowAstronomicalTide": -14,
+      "meanLowWaterSpring": -7.2
+    },
+    {
+      "id": "tide-30119",
+      "stationId": "30119",
+      "name": "Jægerspris Havn",
+      "lat": 55.8563,
+      "lon": 12.0091,
+      "lowAstronomicalTide": -15.4,
+      "meanLowWaterSpring": -9.1
+    },
+    {
+      "id": "tide-30121",
+      "stationId": "30121",
+      "name": "Kyndbyværket Havn",
+      "lat": 55.8117,
+      "lon": 11.8773,
+      "lowAstronomicalTide": -16.8,
+      "meanLowWaterSpring": -9.8
+    },
+    {
+      "id": "tide-30129",
+      "stationId": "30129",
+      "name": "Frederikssund Syd",
+      "lat": 55.8278,
+      "lon": 12.0626,
+      "lowAstronomicalTide": -12.9,
+      "meanLowWaterSpring": -7.5
+    },
+    {
+      "id": "tide-30202",
+      "stationId": "30202",
+      "name": "Vedbæk",
+      "lat": 55.8491,
+      "lon": 12.5715,
+      "lowAstronomicalTide": -14.7,
+      "meanLowWaterSpring": -8.5
+    },
+    {
+      "id": "tide-30328",
+      "stationId": "30328",
+      "name": "Hellerup Havn",
+      "lat": 55.7316,
+      "lon": 12.5823,
+      "lowAstronomicalTide": -16.2,
+      "meanLowWaterSpring": -8.1
+    },
+    {
+      "id": "tide-30333",
+      "stationId": "30333",
+      "name": "Kastrup Havn",
+      "lat": 55.6426,
+      "lon": 12.6514,
+      "lowAstronomicalTide": -14.7,
+      "meanLowWaterSpring": -7.1
+    },
+    {
+      "id": "tide-30336",
+      "stationId": "30336",
+      "name": "Københavns Havn",
+      "lat": 55.7043,
+      "lon": 12.5989,
+      "lowAstronomicalTide": -15.2,
+      "meanLowWaterSpring": -7.8
+    },
+    {
+      "id": "tide-30346",
+      "stationId": "30346",
+      "name": "Nordre Røse Fyr",
+      "lat": 55.6361,
+      "lon": 12.6865,
+      "lowAstronomicalTide": -11.3,
+      "meanLowWaterSpring": -7.2
+    },
+    {
+      "id": "tide-30357",
+      "stationId": "30357",
+      "name": "Drogden Fyr",
+      "lat": 55.5364,
+      "lon": 12.7113,
+      "lowAstronomicalTide": -6.6,
+      "meanLowWaterSpring": -4.3
+    },
+    {
+      "id": "tide-30361",
+      "stationId": "30361",
+      "name": "Dragør",
+      "lat": 55.5935,
+      "lon": 12.6785,
+      "lowAstronomicalTide": -9.1,
+      "meanLowWaterSpring": -5.3
+    },
+    {
+      "id": "tide-30396",
+      "stationId": "30396",
+      "name": "Hundige Havn",
+      "lat": 55.5984,
+      "lon": 12.3565,
+      "lowAstronomicalTide": -6.3,
+      "meanLowWaterSpring": -3
+    },
+    {
+      "id": "tide-30409",
+      "stationId": "30409",
+      "name": "Roskilde",
+      "lat": 55.6509,
+      "lon": 12.0771,
+      "lowAstronomicalTide": -5.3,
+      "meanLowWaterSpring": -2.3
+    },
+    {
+      "id": "tide-30479",
+      "stationId": "30479",
+      "name": "Køge Havn",
+      "lat": 55.4555,
+      "lon": 12.1965,
+      "lowAstronomicalTide": -6.5,
+      "meanLowWaterSpring": -3.2
+    },
+    {
+      "id": "tide-31063",
+      "stationId": "31063",
+      "name": "Rødvig",
+      "lat": 55.2543,
+      "lon": 12.3744,
+      "lowAstronomicalTide": -5.4,
+      "meanLowWaterSpring": -2.7
+    },
+    {
+      "id": "tide-31171",
+      "stationId": "31171",
+      "name": "Karrebæksminde",
+      "lat": 55.1766,
+      "lon": 11.6471,
+      "lowAstronomicalTide": -15.8,
+      "meanLowWaterSpring": -9.4
+    },
+    {
+      "id": "tide-31212",
+      "stationId": "31212",
+      "name": "Præstø Havn",
+      "lat": 55.1251,
+      "lon": 12.0425,
+      "lowAstronomicalTide": -7.5,
+      "meanLowWaterSpring": -4
+    },
+    {
+      "id": "tide-31232",
+      "stationId": "31232",
+      "name": "Vordingborg Havn",
+      "lat": 54.9967,
+      "lon": 11.8868,
+      "lowAstronomicalTide": -21.2,
+      "meanLowWaterSpring": -14.8
+    },
+    {
+      "id": "tide-31233",
+      "stationId": "31233",
+      "name": "Vordingborg Nordhavn",
+      "lat": 55.004,
+      "lon": 11.9167,
+      "lowAstronomicalTide": -17.1,
+      "meanLowWaterSpring": -7.4
+    },
+    {
+      "id": "tide-31244",
+      "stationId": "31244",
+      "name": "Kalvehave",
+      "lat": 54.995,
+      "lon": 12.1666,
+      "lowAstronomicalTide": -10.8,
+      "meanLowWaterSpring": -6.1
+    },
+    {
+      "id": "tide-31272",
+      "stationId": "31272",
+      "name": "Stege Havn",
+      "lat": 54.9838,
+      "lon": 12.2803,
+      "lowAstronomicalTide": -11.5,
+      "meanLowWaterSpring": -7.1
+    },
+    {
+      "id": "tide-31282",
+      "stationId": "31282",
+      "name": "Klintholm Havn",
+      "lat": 54.953,
+      "lon": 12.4651,
+      "lowAstronomicalTide": -6.7,
+      "meanLowWaterSpring": -1.8
+    },
+    {
+      "id": "tide-31343",
+      "stationId": "31343",
+      "name": "Bandholm Havn",
+      "lat": 54.8368,
+      "lon": 11.4879,
+      "lowAstronomicalTide": -26.4,
+      "meanLowWaterSpring": -19.4
+    },
+    {
+      "id": "tide-31417",
+      "stationId": "31417",
+      "name": "Nakskov",
+      "lat": 54.8279,
+      "lon": 11.1364,
+      "lowAstronomicalTide": -9.6,
+      "meanLowWaterSpring": -4.9
+    },
+    {
+      "id": "tide-31463",
+      "stationId": "31463",
+      "name": "Sakskøbing Havn",
+      "lat": 54.8023,
+      "lon": 11.6353,
+      "lowAstronomicalTide": -28.6,
+      "meanLowWaterSpring": -18.9
+    },
+    {
+      "id": "tide-31473",
+      "stationId": "31473",
+      "name": "Guldborgsund Tunnel",
+      "lat": 54.8352,
+      "lon": 11.7944,
+      "lowAstronomicalTide": -27.2,
+      "meanLowWaterSpring": -17.7
+    },
+    {
+      "id": "tide-31493",
+      "stationId": "31493",
+      "name": "Hesnæs",
+      "lat": 54.8231,
+      "lon": 12.1373,
+      "lowAstronomicalTide": -6.8,
+      "meanLowWaterSpring": -2.8
+    },
+    {
+      "id": "tide-31513",
+      "stationId": "31513",
+      "name": "Nykøbing Falster Havn",
+      "lat": 54.7701,
+      "lon": 11.861,
+      "lowAstronomicalTide": -24.8,
+      "meanLowWaterSpring": -16
+    },
+    {
+      "id": "tide-31573",
+      "stationId": "31573",
+      "name": "Rødbyhavn",
+      "lat": 54.6561,
+      "lon": 11.3475,
+      "lowAstronomicalTide": -10.1,
+      "meanLowWaterSpring": -1
+    },
+    {
+      "id": "tide-31616",
+      "stationId": "31616",
+      "name": "Gedser",
+      "lat": 54.5721,
+      "lon": 11.9245,
+      "lowAstronomicalTide": -9.7,
+      "meanLowWaterSpring": -2.2
+    },
+    {
+      "id": "tide-32002",
+      "stationId": "32002",
+      "name": "Christians Ø",
+      "lat": 55.3207,
+      "lon": 15.1861,
+      "lowAstronomicalTide": -3.2,
+      "meanLowWaterSpring": -2.4
+    },
+    {
+      "id": "tide-32048",
+      "stationId": "32048",
+      "name": "Tejn",
+      "lat": 55.249,
+      "lon": 14.8368,
+      "lowAstronomicalTide": -3.2,
+      "meanLowWaterSpring": -2.4
+    },
+    {
+      "id": "tide-32096",
+      "stationId": "32096",
+      "name": "Rønne Havn",
+      "lat": 55.0932,
+      "lon": 14.6896,
+      "lowAstronomicalTide": -2.9,
+      "meanLowWaterSpring": -2.3
+    }
+  ],
+  "harbours": [
+    {
+      "id": "havn-snekkersten",
+      "name": "Snekkersten Havn",
+      "lat": 56.0079,
+      "lon": 12.5889,
+      "osm": "node/3567550915",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 56.0041,
+        "lon": 12.5899
+      }
+    },
+    {
+      "id": "havn-espergaerde",
+      "name": "Espergærde Havn",
+      "lat": 55.9924,
+      "lon": 12.5624,
+      "osm": "node/1201650037",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.9874,
+        "lon": 12.5622
+      }
+    },
+    {
+      "id": "havn-helsingoer-nordhavn",
+      "name": "Helsingør Nordhavn",
+      "lat": 56.043,
+      "lon": 12.6154,
+      "osm": "node/2250220525",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 56.0457,
+        "lon": 12.6177
+      }
+    },
+    {
+      "id": "havn-humlebaek",
+      "name": "Humlebæk Havn",
+      "lat": 55.971,
+      "lon": 12.5462,
+      "osm": "node/1201650054",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.9707,
+        "lon": 12.5483
+      }
+    },
+    {
+      "id": "havn-nivaa",
+      "name": "Nivå Havn",
+      "lat": 55.9398,
+      "lon": 12.5281,
+      "osm": "node/1144196977",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.9374,
+        "lon": 12.5344
+      }
+    },
+    {
+      "id": "havn-rungsted",
+      "name": "Rungsted Havn",
+      "lat": 55.8847,
+      "lon": 12.5468,
+      "osm": "way/912267193",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 55.8874,
+        "lon": 12.5483
+      }
+    },
+    {
+      "id": "havn-gilleleje",
+      "name": "Gilleleje Havn",
+      "lat": 56.1275,
+      "lon": 12.3117,
+      "osm": "way/916133338",
+      "forecast": {
+        "model": "dkss_idw",
+        "lat": 56.1291,
+        "lon": 12.3122
+      }
+    }
+  ],
+  "forecastPending": [],
+  "forecastChecked": [
+    "SE-2055",
+    "SE-2056",
+    "SE-2061",
+    "SE-2069",
+    "SE-2080",
+    "SE-2083",
+    "SE-2085",
+    "SE-2088",
+    "SE-2110",
+    "SE-2111",
+    "SE-2130",
+    "SE-2157",
+    "SE-2179",
+    "SE-2507",
+    "SE-2541",
+    "SE-2545",
+    "SE-33089",
+    "SE-33093",
+    "SE-33094",
+    "SE-33095",
+    "SE-33096",
+    "SE-33097",
+    "SE-35101",
+    "SE-35103",
+    "SE-35104",
+    "SE-35105",
+    "SE-35109",
+    "SE-35112",
+    "SE-35118",
+    "SE-35119",
+    "SE-35120",
+    "SE-35124",
+    "SE-35127",
+    "SE-35138",
+    "SE-35144",
+    "SE-35151",
+    "SE-35171",
+    "SE-35183",
+    "SE-35185",
+    "SE-35200",
+    "SE-35209",
+    "SE-35220",
+    "SE-35233",
+    "SE-35236"
+  ]
 }
