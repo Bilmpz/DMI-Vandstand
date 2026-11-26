@@ -369,23 +369,59 @@ input[type="text"]::placeholder {
   margin: 0;
 }
 
-.sensors {
+/* Måleserier: en almindelig tabel med streger */
+
+.series {
+  margin-top: 32px;
+}
+
+.series-note {
+  margin-top: 4px;
+  max-width: 880px;
+  color: var(--daempet);
+}
+
+.series-table th:nth-child(-n + 2),
+.series-table td.pick {
+  width: 1%;
+  text-align: center;
+}
+
+.series-table td.pick {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.series-table input {
+  width: 20px;
+  height: 20px;
+  margin: 12px 0;
+  accent-color: var(--blaek);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.series-table tr.is-shown td {
+  font-weight: 600;
+}
+
+.tag {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--daempet);
+}
+
+.series-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0 16px;
-  margin-top: 8px;
+  gap: 0 24px;
+  margin-top: 4px;
 }
 
-.sensors a,
-.sensors strong {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-}
-
-.sensors strong {
-  font-weight: 600;
+.series-actions span {
+  color: var(--daempet);
 }
 
 /* Vandstandsbrættet og seneste måling */
@@ -430,6 +466,10 @@ input[type="text"]::placeholder {
   margin-left: 12px;
   font-size: 20px;
   font-weight: 600;
+}
+
+.now-series {
+  color: var(--daempet);
 }
 
 .now-line.is-stale {
@@ -520,6 +560,10 @@ input[type="text"]::placeholder {
 
 #chartBlock {
   margin-top: 32px;
+}
+
+.chart-title {
+  margin-bottom: 8px;
 }
 
 .legend {

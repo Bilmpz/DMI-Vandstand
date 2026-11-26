@@ -54,17 +54,43 @@
 
         <h1 id="stName" tabindex="-1"></h1>
         <dl class="facts" id="stFacts"></dl>
-        <p class="sensors" id="stSensors" hidden></p>
 
         <div class="now" id="nowBlock" hidden>
           <div class="gauge" id="gauge"></div>
           <div class="now-text">
             <h2>Seneste måling</h2>
+            <p class="now-line now-series" id="nowSeries"></p>
             <p class="now-value"><span id="nowValue"></span><span class="now-unit" id="nowUnit"></span></p>
             <p class="now-line" id="nowTime"></p>
             <p class="now-line" id="nowTrend"></p>
           </div>
         </div>
+
+        <section class="series" id="seriesBlock" hidden aria-labelledby="seriesTitle">
+          <h2 id="seriesTitle">Måleserier</h2>
+          <p class="series-note">En måleserie er én station med én parameter. Vælg den serie, grafen viser, og sæt flueben ved de serier, der skal med i Excel-filen.</p>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Måleserier">
+            <table class="series-table">
+              <thead>
+                <tr>
+                  <th scope="col">Graf</th>
+                  <th scope="col">Med i Excel</th>
+                  <th scope="col">Station-id</th>
+                  <th scope="col">Ejer</th>
+                  <th scope="col">Parameter</th>
+                  <th scope="col">Nulpunkt</th>
+                  <th scope="col">Periode</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody id="seriesBody"></tbody>
+            </table>
+          </div>
+          <p class="series-actions">
+            <button type="button" class="link" id="selectAll">Vælg alle</button>
+            <span id="seriesCount" aria-live="polite"></span>
+          </p>
+        </section>
 
         <form id="periodForm" class="controls" novalidate hidden>
           <div class="field">
@@ -76,7 +102,7 @@
             <input id="til" name="til" type="text" inputmode="numeric" autocomplete="off" placeholder="dd.mm.åååå" maxlength="10">
           </div>
           <div class="field field-limit">
-            <label for="graense">Grænseværdi i cm (valgfri)</label>
+            <label for="graense">Grænseværdi (valgfri)</label>
             <input id="graense" name="graense" type="text" inputmode="text" autocomplete="off" maxlength="7">
           </div>
           <button class="btn btn-secondary" type="submit" id="showBtn">Vis</button>
@@ -105,6 +131,7 @@
         <div id="excelParts" hidden></div>
 
         <div id="chartBlock" hidden>
+          <h2 class="chart-title" id="chartTitle"></h2>
           <ul class="legend" id="legend"></ul>
           <div class="chart-box"><canvas id="chart" role="img"></canvas></div>
         </div>
@@ -127,7 +154,7 @@
               <thead>
                 <tr>
                   <th scope="col">Tid (dansk)</th>
-                  <th scope="col" class="num" id="tableUnit">Vandstand cm DVR90</th>
+                  <th scope="col" class="num" id="tableUnit">Vandstand</th>
                   <th scope="col">Type</th>
                   <th scope="col">qcStatus</th>
                 </tr>

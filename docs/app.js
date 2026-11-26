@@ -592,9 +592,12 @@
   }
 
   // Afsluttede kvartaler genbruges i 10 minutter, så "Vis" efterfulgt af "Hent Excel" ikke henter alt to gange.
-  // Bidden med de nyeste målinger hentes altid igen.
+  // Bidden med de nyeste målinger hentes altid igen. Nøglen er serie og bid. Tømmes, når man skifter sted.
   const chunkCache = new Map();
-  let chunkCacheStation = null;
+
+  function clearChunkCache() {
+    chunkCache.clear();
+  }
 
   class DmiDownError extends Error {}
 
@@ -609,11 +612,7 @@
     const pauses = options.pauses || RETRY_PAUSES;
     const finalPause = options.finalPause === undefined ? FINAL_PAUSE : options.finalPause;
 
-    const key0 = station.id + "|" + station.parameter;
-    if (chunkCacheStation !== key0) {
-      chunkCache.clear();
-      chunkCacheStation = key0;
-    }
+    const prefix = station.id + "|" + station.parameter + "|";
     const startedAt = Date.now();
     for (const [key, entry] of chunkCache) {
       if (startedAt - entry.at >= CACHE_FOR) chunkCache.delete(key);
@@ -629,7 +628,7 @@
 
     // Henter én bid. Giver false, hvis den stadig fejler efter 2 nye forsøg.
     const load = async (chunk, i) => {
-      const key = chunk.start + "|" + chunk.end;
+      const key = prefix + chunk.start + "|" + chunk.end;
       const hit = chunkCache.get(key);
       if (hit && chunk.end < hit.at - HOUR) {
         parts[i] = hit.series;
@@ -994,15 +993,6 @@
   // Excel-fil: CSV med semikolon, decimalkomma, CRLF og UTF-8 med BOM
   // ====================================================================
 
-  // Midlertidigt: stationsvisningen viser hovedserien. Kun serier i DVR90 får "DVR90".
-  function datumKnown(series) {
-    return !series || isDvr90(series);
-  }
-
-  function levelUnit(series) {
-    return series ? unitLabel(series) : "cm";
-  }
-
   // Overskrift: Tid UTC; Tid dansk; for hver serie værdi, type og qcStatus; prognose
   function csvHeader(list) {
     const cols = ["Tid UTC", "Tid dansk"];
@@ -1089,8 +1079,8 @@
   }
 
   // Indholdet af én fil som en liste af tekststykker (til en Blob)
-  function csvPieces(part, station) {
-    return [BOM + csvHeader(station) + CRLF].concat(part.blocks.map((b) => b.text));
+  function csvPieces(part, header) {
+    return [BOM + header + CRLF].concat(part.blocks.map((b) => b.text));
   }
 
   function slug(name) {
@@ -1105,9 +1095,10 @@
     );
   }
 
-  // vandstand_{stationId}_{navn}_{parameter}_{fra}_{til}.csv, med _del1, _del2 ... når filen er delt
-  function csvFileName(station, fra, til, partNo, partCount) {
-    const base = `vandstand_${station.id}_${slug(station.name)}_${station.parameter}_${isoDate(fra)}_${isoDate(til)}`;
+  // vandstand_{sted}_{antal}-serier_{15min|raa}_{fra}_{til}.csv, med _del1, _del2 ... når filen er delt
+  function csvFileName(place, fra, til, count, raw, partNo, partCount) {
+    const series = `${count}-${count === 1 ? "serie" : "serier"}`;
+    const base = `vandstand_${slug(place.name)}_${series}_${raw ? "raa" : "15min"}_${isoDate(fra)}_${isoDate(til)}`;
     return base + (partCount > 1 ? `_del${partNo}` : "") + ".csv";
   }
 
@@ -1177,7 +1168,11 @@
     placeOf: new Map(),
     postnumre: null,
     lastPostnr: null,
-    station: null,
+    lastWithClosed: false,
+    place: null, // stedet, der vises
+    shown: null, // serien i grafen
+    selected: new Set(), // serier med i Excel
+    cachePlace: null,
     searchJob: null,
     job: null, // hentning af en periode
     liveJob: null, // seneste måling
@@ -1244,6 +1239,7 @@
     return {
       postnr: q.get("postnr"),
       station: q.get("station"),
+      serie: q.get("serie"),
       fra: q.get("fra"),
       til: q.get("til"),
       graense: q.get("graense"),
@@ -1255,7 +1251,7 @@
     const h = readHash();
     if (h.station) {
       const place = state.placeOf.get(h.station);
-      if (place && place.main) return showStation(place.main, h);
+      if (place && place.main) return showPlace(place, h);
       showSearch(null);
       showError($("searchError"), `Station ${h.station} findes ikke i stationslisten. Søg på et postnummer i stedet.`);
       return;
@@ -1266,7 +1262,7 @@
   // ---------- Søgning ----------
 
   function showSearch(postnr, withClosed) {
-    leaveStation();
+    leavePlace();
     $("viewStation").hidden = true;
     $("viewSearch").hidden = false;
     document.title = "DMI Vandstand";
@@ -1364,18 +1360,18 @@
     ).catch(() => {});
   }
 
-  // ---------- Station ----------
+  // ---------- Sted ----------
 
   const LIVE_EVERY = 5 * MIN;
   const GAP_GRACE = 30 * MIN; // DMI's målinger kommer med forsinkelse, så de nyeste kvarterer tælles ikke som huller
   const smallScreen = window.matchMedia("(max-width: 760px)");
 
-  function leaveStation() {
+  function leavePlace() {
     if (state.job) state.job.abort();
     if (state.liveJob) state.liveJob.abort();
     clearInterval(state.liveTimer);
     clearTimeout(state.progressTimer);
-    state.station = null;
+    state.place = null;
     state.latest = null;
     state.latestRef = null;
     state.view = null;
@@ -1390,18 +1386,39 @@
     return box;
   }
 
-  function stationFrom(station) {
-    return parseIsoDate(station.from);
+  function fmtIso(text) {
+    const d = parseIsoDate(text);
+    return d ? fmtDateParts(d) : text || "";
+  }
+
+  // Seriens sidste dag med data: i dag for aktive serier, ellers stationens slutdato
+  function seriesEnd(series) {
+    const today = todayDk();
+    const to = series.to ? parseIsoDate(series.to) : null;
+    return to && compareDates(to, today) < 0 ? to : today;
+  }
+
+  function seriesStart(series) {
+    return parseIsoDate(series.from);
+  }
+
+  // "fra 08.11.1991" eller "01.01.1891 til 11.10.1991"
+  function seriesPeriodText(series) {
+    return series.to ? `${fmtIso(series.from)} til ${fmtIso(series.to)}` : `fra ${fmtIso(series.from)}`;
   }
 
   // De seneste 7 døgn. For en nedlagt serie de sidste 7 døgn med data.
-  function defaultPeriod(station) {
-    const to = station.to ? parseIsoDate(station.to) : null;
-    const til = to && compareDates(to, todayDk()) < 0 ? to : todayDk();
+  function defaultPeriod(series) {
+    const til = seriesEnd(series);
     let fra = addDays(til, -7);
-    const from = stationFrom(station);
+    const from = seriesStart(series);
     if (from && compareDates(fra, from) < 0) fra = from;
     return { fra, til };
+  }
+
+  // Tidligste dato blandt stedets serier
+  function placeStart(place) {
+    return parseIsoDate(place.from);
   }
 
   // "120", "120,5", "-20" eller tomt. Giver null for tomt og NaN for noget, der ikke er et tal.
@@ -1415,11 +1432,14 @@
     return limit === null ? "" : String(limit).replace(".", ",");
   }
 
-  function stationHash(id, input) {
+  // #station=30017&serie=30018:sealev_ln&fra=...&til=...&graense=...
+  function placeHash(series, input) {
+    const place = state.place;
     const q = new URLSearchParams();
-    q.set("station", id);
+    q.set("station", place.main ? place.main.id : series.id);
+    if (series !== place.main) q.set("serie", series.key);
     if (input) {
-      const def = defaultPeriod(state.byId.get(id));
+      const def = defaultPeriod(series);
       const isDefault = compareDates(input.fra, def.fra) === 0 && compareDates(input.til, def.til) === 0;
       if (!isDefault) {
         q.set("fra", isoDate(input.fra));
@@ -1430,125 +1450,193 @@
     return "#" + q.toString();
   }
 
-  // Skift måler, hvis stedet har flere
-  function renderSensors(input) {
-    const station = state.station;
-    const place = state.placeOf.get(station.id);
-    const box = $("stSensors");
-    box.textContent = "";
-    box.hidden = true; // stedets måleserier vises i tabellen "Måleserier"
-    if (box.hidden || !place) return;
-
-    box.append(el("span", "", `Stedet har ${place.stations.length} målere`));
-    for (const s of place.stations) {
-      if (s.id === station.id) {
-        box.append(el("strong", "", `${s.name} (vist)`));
-      } else {
-        const link = el("a", "", s.name);
-        link.href = stationHash(s.id, input);
-        box.append(link);
-      }
-    }
+  function selectedSeries() {
+    return state.place ? state.place.series.filter((s) => state.selected.has(s.key)) : [];
   }
 
-  function showStation(station, h) {
+  function showPlace(place, h) {
     if (state.searchJob) state.searchJob.abort();
-    leaveStation();
-    state.station = station;
+    leavePlace();
+    if (state.cachePlace !== place) {
+      // Et nyt sted: hovedserien er valgt til Excel, og gemte bidder fra det forrige sted smides væk.
+      clearChunkCache();
+      state.cachePlace = place;
+      state.selected = new Set(place.main ? [place.main.key] : []);
+    }
+    state.place = place;
+    state.shown = place.series.find((s) => s.key === h.serie) || place.main;
+    const main = place.main;
+    const shown = state.shown;
 
     $("viewSearch").hidden = true;
     $("viewStation").hidden = false;
-    document.title = `${station.name} – DMI Vandstand`;
+    document.title = `${place.name} – DMI Vandstand`;
     $("backLink").href = state.lastPostnr
       ? "#postnr=" + state.lastPostnr + (state.lastWithClosed ? "&nedlagte=1" : "")
       : "#";
 
-    $("stName").textContent = station.name;
-    $("tableUnit").textContent = "Vandstand " + levelUnit(station);
-    const datum = !datumKnown(station)
-      ? `${station.parameter}, nulpunkt ikke dokumenteret af DMI`
-      : station.parameter === "sealev_dvr"
-        ? "sealev_dvr, DVR90"
-        : `${station.parameter}, DVR90 ifølge DMI`;
-    const from = stationFrom(station);
+    $("stName").textContent = place.name;
     const facts = $("stFacts");
     facts.textContent = "";
     facts.append(
-      fact("Ejer", station.owner),
-      fact("Station-id", station.id),
-      fact("Parameter og nulpunkt", datum),
-      fact("Data fra", from ? fmtDateParts(from) : station.from)
+      fact(place.owners.length === 1 ? "Ejer" : "Ejere", place.owners.join(", ")),
+      fact(place.stations.length === 1 ? "Station" : "Stationer", place.stations.map((s) => s.id).join(", ")),
+      fact("Hovedserie", `${seriesName(main)}, ${main.datum}`),
+      fact("Data fra", fmtIso(place.from)),
+      fact("Status", place.active ? "aktiv" : `nedlagt, data til ${fmtIso(place.to)}`)
     );
 
-    // Periode og grænseværdi fra adressen, ellers de seneste 7 døgn
+    // Periode og grænseværdi fra adressen, ellers de seneste 7 døgn i den viste serie
     let fra = parseIsoDate(h.fra);
     let til = parseIsoDate(h.til);
-    if (!fra || !til) ({ fra, til } = defaultPeriod(station));
+    if (!fra || !til) ({ fra, til } = defaultPeriod(shown));
     const limit = parseLimit(h.graense);
     state.limit = Number.isNaN(limit) ? null : limit;
     $("fra").value = fmtDateParts(fra);
     $("til").value = fmtDateParts(til);
     $("graense").value = limitText(state.limit);
-    renderSensors({ fra, til, limit: state.limit });
+    renderSeriesTable();
 
     for (const id of ["chartBlock", "notes", "tableBlock", "dataStatus", "excelParts"]) $(id).hidden = true;
-    for (const id of ["periodForm", "shortcuts", "nowBlock", "stSource"]) $(id).hidden = false;
+    for (const id of ["periodForm", "shortcuts", "stSource", "seriesBlock"]) $(id).hidden = false;
+    $("nowBlock").hidden = !place.active;
     showError($("periodError"), "");
+    const others = place.owners.filter((o) => o !== "DMI");
     $("stSource").textContent =
-      (station.owner === "DMI"
-        ? "Kilde til målingerne: DMI."
-        : station.owner === "Havn/kommune"
-          ? "Kilde til målingerne: DMI og havnen eller kommunen, som ejer stationen."
-          : `Kilde til målingerne: DMI og ${station.owner}, som ejer stationen.`) +
-      " Kilde til prognosen: DMI's stormflodsmodel DKSS.";
+      "Kilde til målingerne: DMI's Frie Data" +
+      (others.length
+        ? `. Stationerne ejes af ${place.owners.join(", ").replace(/, ([^,]*)$/, " og $1")}`
+            .replace("Havn/kommune", "havne eller kommuner")
+            .replace("Ikke oplyst", "en ejer, som DMI ikke oplyser")
+        : "") +
+      ". Kilde til prognosen: DMI's stormflodsmodel DKSS.";
 
     renderLatest();
     window.scrollTo(0, 0);
 
-    refreshLatest();
-    state.liveTimer = setInterval(() => {
-      if (!document.hidden) refreshLatest();
-    }, LIVE_EVERY);
+    if (place.active) {
+      refreshLatest();
+      state.liveTimer = setInterval(() => {
+        if (!document.hidden) refreshLatest();
+      }, LIVE_EVERY);
+    }
+    runPeriod({ excel: false });
+  }
+
+  // ---------- Tabellen "Måleserier" ----------
+
+  function renderSeriesTable() {
+    const place = state.place;
+    const body = $("seriesBody");
+    body.textContent = "";
+    for (const s of place.series) {
+      const row = el("tr");
+      if (s === state.shown) row.className = "is-shown";
+
+      const radio = el("input");
+      radio.type = "radio";
+      radio.name = "graf";
+      radio.value = s.key;
+      radio.checked = s === state.shown;
+      radio.setAttribute("aria-label", `Vis ${seriesName(s)} i grafen`);
+
+      const box = el("input");
+      box.type = "checkbox";
+      box.value = s.key;
+      box.checked = state.selected.has(s.key);
+      box.setAttribute("aria-label", `${seriesName(s)} med i Excel`);
+
+      const graphCell = el("td", "pick");
+      graphCell.append(radio);
+      const excelCell = el("td", "pick");
+      excelCell.append(box);
+
+      const param = el("td");
+      param.append(document.createTextNode(s.parameter));
+      if (s === place.main) param.append(el("span", "tag", "hovedserie"));
+
+      row.append(
+        graphCell,
+        excelCell,
+        el("td", "", s.id),
+        el("td", "", s.owner),
+        param,
+        el("td", "", s.datum),
+        el("td", "", seriesPeriodText(s)),
+        el("td", "", s.active ? "aktiv" : "nedlagt")
+      );
+      body.append(row);
+    }
+    renderSelectedCount();
+  }
+
+  function renderSelectedCount() {
+    const n = state.selected.size;
+    const total = state.place ? state.place.series.length : 0;
+    $("seriesCount").textContent = `${n} af ${total} ${total === 1 ? "serie" : "serier"} med i Excel`;
+  }
+
+  // Vælg den serie, grafen viser. Ligger perioden uden for seriens data, vises seriens sidste 7 døgn.
+  function showSeries(series) {
+    if (!series || series === state.shown) return;
+    state.shown = series;
+    const input = readPeriodFields();
+    const start = seriesStart(series);
+    const end = seriesEnd(series);
+    const outside =
+      input.error ||
+      (start && compareDates(input.til, start) < 0) ||
+      compareDates(input.fra, end) > 0;
+    if (outside) {
+      const def = defaultPeriod(series);
+      $("fra").value = fmtDateParts(def.fra);
+      $("til").value = fmtDateParts(def.til);
+    }
+    renderSeriesTable();
     runPeriod({ excel: false });
   }
 
   // ---------- Seneste måling og vandstandsbræt ----------
 
   async function refreshLatest() {
-    const station = state.station;
-    if (!station) return;
+    const place = state.place;
+    const main = place && place.main;
+    if (!main || !main.active) return;
     if (state.liveJob) state.liveJob.abort();
     const job = (state.liveJob = new AbortController());
 
     try {
-      const latest = await fetchLatest(station, job.signal);
+      const latest = await fetchLatest(main, job.signal);
       let ref = null;
       if (latest) {
         try {
-          ref = await fetchReference(station, latest.t - HOUR, job.signal);
+          ref = await fetchReference(main, latest.t - HOUR, job.signal);
         } catch (err) {
           ref = null;
         }
       }
-      if (job.signal.aborted || state.station !== station) return;
+      if (job.signal.aborted || state.place !== place) return;
       state.latest = latest;
       state.latestRef = ref;
       state.latestAt = Date.now();
       state.latestError = !latest;
       markFetched();
     } catch (err) {
-      if (job.signal.aborted || state.station !== station) return;
+      if (job.signal.aborted || state.place !== place) return;
       state.latestError = true;
     }
     renderLatest();
   }
 
   function renderLatest() {
+    const main = state.place && state.place.main;
+    if (!main) return;
     const latest = state.latest;
     const trend = $("nowTrend");
     const time = $("nowTime");
     time.classList.remove("is-stale");
     trend.textContent = "";
+    $("nowSeries").textContent = `${seriesName(main)}, ${main.datum}`;
 
     if (!latest) {
       $("nowValue").textContent = state.latestError ? "–" : "…";
@@ -1560,8 +1648,8 @@
       return;
     }
 
-    $("nowValue").textContent = fmtLevel(latest.v);
-    $("nowUnit").textContent = levelUnit(state.station);
+    $("nowValue").textContent = fmtValue(main, latest.v);
+    $("nowUnit").textContent = isDvr90(main) || isTemperature(main) ? unitLabel(main) : "cm";
 
     if (Date.now() - latest.t > STALE_AFTER) {
       time.textContent = `Ingen ny måling siden ${fmtDateTime(latest.t)}`;
@@ -1572,8 +1660,9 @@
       if (ref && ref.t < latest.t) {
         const diff = round1(latest.v - ref.v);
         const minutes = Math.round((latest.t - ref.t) / MIN);
-        const word = Math.abs(diff) < 2 ? "Stabil" : diff > 0 ? "Stigende" : "Faldende";
-        trend.textContent = `${word}, ${fmtLevel(diff)} cm på ${minutes} minutter`;
+        const still = isTemperature(main) ? 0.2 : 2;
+        const word = Math.abs(diff) < still ? "Stabil" : diff > 0 ? "Stigende" : "Faldende";
+        trend.textContent = `${word}, ${fmtLevel(diff)} ${unitShort(main)} på ${minutes} minutter`;
       } else {
         trend.textContent = "Tendensen kan ikke beregnes, fordi målingen 60 minutter før mangler.";
       }
@@ -1585,6 +1674,10 @@
   // vandsøjle op til seneste måling, nullinje og rød markering ved grænseværdien.
   function renderGauge() {
     const box = $("gauge");
+    const main = state.place && state.place.main;
+    // Brættet er til vandstand. For en temperaturserie vises kun tallet.
+    box.hidden = !main || isTemperature(main);
+    if (box.hidden) return;
     const value = state.latest ? state.latest.v : null;
     const limit = state.limit;
     const small = smallScreen.matches;
@@ -1645,7 +1738,7 @@
     parts.push(`<rect x="${left}" y="${y0 - 1}" width="${boardW}" height="2" fill="${wetZero ? "#FFFFFF" : INK}"/>`);
     parts.push(`<rect x="${left + boardW}" y="${y0 - 1}" width="6" height="2" fill="${INK}"/>`);
     parts.push(
-      `<text x="${labelX}" y="${y0 + font * 0.35}" font-size="${font}" font-weight="600" fill="${INK}">${datumKnown(state.station) ? "0 DVR90" : "0"}</text>`
+      `<text x="${labelX}" y="${y0 + font * 0.35}" font-size="${font}" font-weight="600" fill="${INK}">${isDvr90(main) ? "0 DVR90" : "0"}</text>`
     );
 
     parts.push(
@@ -1667,7 +1760,7 @@
     }
 
     const label =
-      (value === null ? "Vandstandsbræt uden måling." : `Vandstandsbræt. Seneste måling ${fmtLevel(value)} ${levelUnit(state.station)}.`) +
+      (value === null ? "Vandstandsbræt uden måling." : `Vandstandsbræt. Seneste måling ${fmtLevel(value)} ${unitLabel(main)}.`) +
       limitLabel;
     box.innerHTML =
       `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H + 2 * pad}" viewBox="0 0 ${W} ${H + 2 * pad}" ` +
@@ -1677,9 +1770,9 @@
   // ---------- Periode ----------
 
   function readPeriodFields() {
-    const station = state.station;
+    const place = state.place;
     const today = todayDk();
-    const from = stationFrom(station);
+    const from = placeStart(place);
     const fra = parseDkDate($("fra").value);
     const til = parseDkDate($("til").value);
 
@@ -1687,22 +1780,34 @@
     if (compareDates(til, today) > 0) return { error: `Til kan højst være i dag, ${fmtDateParts(today)}.` };
     if (compareDates(fra, til) > 0) return { error: "Fra skal være samme dag som Til eller tidligere." };
     if (from && compareDates(fra, from) < 0) {
-      return { error: `Stationen har data fra ${fmtDateParts(from)}. Vælg en Fra-dato, der ikke ligger før.` };
+      return { error: `Stedet har data fra ${fmtDateParts(from)}. Vælg en Fra-dato, der ikke ligger før.` };
     }
     const limit = parseLimit($("graense").value);
-    if (Number.isNaN(limit)) return { error: "Grænseværdien skal være et tal i cm, for eksempel 120." };
+    if (Number.isNaN(limit)) return { error: "Grænseværdien skal være et tal, for eksempel 120." };
     return { fra, til, limit };
   }
 
+  // 7 døgn, 30 døgn og 1 år går tilbage fra den viste series sidste dag.
+  // "Alt" går fra den tidligste dato blandt de serier, der er valgt til Excel.
   function setShortcut(range) {
-    const station = state.station;
-    const til = todayDk();
-    const from = stationFrom(station);
+    const shown = state.shown;
+    let til = seriesEnd(shown);
     let fra;
     if (range === "7d") fra = addDays(til, -7);
     else if (range === "30d") fra = addDays(til, -30);
     else if (range === "1y") fra = validDate(til.y - 1, til.m, til.d) || addDays({ y: til.y - 1, m: til.m, d: 1 }, til.d - 2);
-    else fra = from || addDays(til, -7);
+    else {
+      const chosen = selectedSeries().length ? selectedSeries() : [shown];
+      fra = null;
+      for (const s of chosen) {
+        const start = seriesStart(s);
+        if (start && (!fra || compareDates(start, fra) < 0)) fra = start;
+        const end = seriesEnd(s);
+        if (compareDates(end, til) > 0) til = end;
+      }
+      fra = fra || addDays(til, -7);
+    }
+    const from = placeStart(state.place);
     if (from && compareDates(fra, from) < 0) fra = from;
 
     $("fra").value = fmtDateParts(fra);
@@ -1713,7 +1818,8 @@
   function showProgress(p) {
     const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
     $("progressText").textContent =
-      `Henter ${p.year}, ${pct} %` + (p.waiting ? ". DMI svarer ikke lige nu, prøver igen om lidt." : "");
+      `Henter ${p.label ? p.label + ", " : ""}${p.year}, ${pct} %` +
+      (p.waiting ? ". DMI svarer ikke lige nu, prøver igen om lidt." : "");
     $("progressFill").style.width = pct + "%";
   }
 
@@ -1723,10 +1829,36 @@
     node.hidden = !text;
   }
 
-  // Henter perioden i Fra og Til fra DMI og viser den. Et nyt kald afbryder det gamle.
+  // Den del af perioden, hvor serien har data. null, hvis de ikke overlapper.
+  function seriesWindow(series, period) {
+    let start = period.start;
+    let end = period.apiEnd;
+    const from = seriesStart(series);
+    if (from) start = Math.max(start, dkToUtc(from.y, from.m, from.d, 0, 0));
+    if (series.to) {
+      const to = parseIsoDate(series.to);
+      if (to) end = Math.min(end, dkToUtc(to.y, to.m, to.d + 1, 0, 0) - 1000);
+    }
+    return start <= end ? { start, end } : null;
+  }
+
+  // Henter én serie i perioden. Giver målingerne og de bidder, der ikke kunne hentes.
+  async function loadSeries(series, period, signal, label) {
+    const win = seriesWindow(series, period);
+    if (!win) return { series: EMPTY_SERIES, failed: [] };
+    return fetchRange(series, win.start, win.end, {
+      signal,
+      onProgress: (p) => {
+        if (state.job && state.job.signal === signal) showProgress(Object.assign({ label }, p));
+      },
+    });
+  }
+
+  // Henter perioden i Fra og Til for den viste serie og viser den. Et nyt kald afbryder det gamle.
   async function runPeriod(opts) {
-    const station = state.station;
-    if (!station) return;
+    const place = state.place;
+    const series = state.shown;
+    if (!place || !series) return;
 
     const input = readPeriodFields();
     if (input.error) {
@@ -1738,8 +1870,7 @@
     releaseExcelLinks();
 
     state.limit = input.limit;
-    history.replaceState(null, "", stationHash(station.id, input));
-    renderSensors(input);
+    history.replaceState(null, "", placeHash(series, input));
     renderGauge();
 
     if (state.job) state.job.abort();
@@ -1748,36 +1879,34 @@
     const period = periodOf(input.fra, input.til, now);
 
     $("progressFill").style.width = "0%";
-    $("progressText").textContent = `Henter ${dkParts(period.start).y}, 0 %`;
+    $("progressText").textContent = `Henter ${seriesName(series)}, ${dkParts(period.start).y}, 0 %`;
     clearTimeout(state.progressTimer);
     state.progressTimer = setTimeout(() => {
       if (state.job === job && !job.signal.aborted) $("progress").hidden = false;
     }, 300);
 
-    // Prognosen hentes samtidig med målingerne. Den vises kun, når Til er i dag.
-    const wantForecast = period.toToday && !!station.forecast;
+    // Prognosen hentes samtidig med målingerne. Den vises kun for en aktiv vandstandsserie, når Til er i dag.
+    const wantForecast = period.toToday && series.active && !isTemperature(series) && !!series.forecast;
     const forecastJob = wantForecast
-      ? fetchForecast(station, job.signal).then(
+      ? fetchForecast(series, job.signal).then(
           (points) => ({ points: points.filter((p) => p.t >= period.start) }),
           () => ({ points: null })
         )
       : null;
 
     try {
-      const result = await fetchRange(station, period.start, period.apiEnd, {
-        signal: job.signal,
-        onProgress: (p) => {
-          if (state.job === job) showProgress(p);
-        },
-      });
-      if (job.signal.aborted || state.station !== station) return;
+      const result = await loadSeries(series, period, job.signal, seriesName(series));
+      if (job.signal.aborted || state.place !== place || state.shown !== series) return;
       markFetched();
 
       const ds = build15(result.series, period.start, period.end, Math.min(period.end, now - GAP_GRACE));
       const view = {
-        station,
+        place,
+        series,
+        station: series,
         period,
         ds,
+        raw: result.series,
         failed: result.failed,
         fetchedAt: now,
         forecast: null,
@@ -1790,21 +1919,15 @@
 
       if (forecastJob) {
         const forecast = await forecastJob;
-        if (job.signal.aborted || state.station !== station || state.view !== view) return;
+        if (job.signal.aborted || state.place !== place || state.view !== view) return;
         view.forecast = forecast.points;
         view.forecastState = forecast.points && forecast.points.length ? "ok" : "error";
         renderView();
       }
 
-      if (opts && opts.excel) {
-        try {
-          await downloadExcel(view);
-        } catch (err) {
-          setStatus("Excel-filen kunne ikke laves. Prøv en kortere periode.");
-        }
-      }
+      if (opts && opts.excel) await downloadExcel(view, job);
     } catch (err) {
-      if (state.station !== station) return;
+      if (state.place !== place) return;
       if (job.signal.aborted) {
         if (job.stoppedByUser) {
           setStatus(
@@ -1813,7 +1936,8 @@
         }
         return;
       }
-      showError($("periodError"), "DMI svarer ikke lige nu. Prøv igen om lidt.");
+      if (opts && opts.excel && state.view) setStatus("Excel-filen kunne ikke laves. Prøv en kortere periode eller færre serier.");
+      else showError($("periodError"), "DMI svarer ikke lige nu. Prøv igen om lidt.");
     } finally {
       if (state.job === job) {
         clearTimeout(state.progressTimer);
@@ -1842,22 +1966,30 @@
     return ranges.map((r) => `${fmtDate(r.start)} til ${fmtDate(r.end)}`);
   }
 
+  // Overskrift på værdikolonnen, fx "Vandstand cm DVR90" eller "Vandtemperatur °C"
+  function valueTitle(series) {
+    return isTemperature(series) ? "Vandtemperatur °C" : "Vandstand " + unitLabel(series);
+  }
+
   function renderView() {
     const view = state.view;
     if (!view) return;
-    const { station, ds, failed } = view;
+    const { series, ds, failed } = view;
     const stats = seriesStats(ds);
     const hasForecast = !!(view.forecast && view.forecast.length);
+    const unit = unitShort(series);
 
+    $("chartTitle").textContent = `${seriesName(series)}, ${unitLabel(series)}`;
+    $("tableUnit").textContent = valueTitle(series);
     $("noteMissing").textContent = failed.length
-      ? `DMI svarede ikke for ${failedRanges(failed).join(", ")}. Den periode mangler i graf, tabel og Excel-fil. Tryk "Vis" for at prøve igen.`
+      ? `DMI svarede ikke for ${failedRanges(failed).join(", ")}. Den periode mangler i graf og tabel. Tryk "Vis" for at prøve igen.`
       : "";
 
     if (stats) {
       view.summary =
-        `Seneste værdi er ${fmtLevel(stats.last.v)} cm den ${fmtDateTime(stats.last.t)}, ` +
-        `højeste i perioden er ${fmtLevel(stats.max.v)} cm den ${fmtDateTime(stats.max.t)}, ` +
-        `og laveste er ${fmtLevel(stats.min.v)} cm den ${fmtDateTime(stats.min.t)}.`;
+        `Seneste værdi er ${fmtValue(series, stats.last.v)} ${unit} den ${fmtDateTime(stats.last.t)}, ` +
+        `højeste i perioden er ${fmtValue(series, stats.max.v)} ${unit} den ${fmtDateTime(stats.max.t)}, ` +
+        `og laveste er ${fmtValue(series, stats.min.v)} ${unit} den ${fmtDateTime(stats.min.t)}.`;
       $("noteSummary").textContent = view.summary;
       $("noteGaps").textContent =
         ds.gaps === 0
@@ -1865,13 +1997,12 @@
           : ds.gaps === 1
             ? "1 kvarter uden måling i perioden."
             : `${fmtCount(ds.gaps)} kvarterer uden måling i perioden.`;
-      renderTable(ds);
+      renderTable(view);
     } else {
-      const from = stationFrom(station);
       view.summary = "";
       showError(
         $("periodError"),
-        "Ingen målinger i perioden." + (from ? ` Stationen har data fra ${fmtDateParts(from)}.` : "")
+        `Ingen målinger i perioden for ${seriesName(series)}. Serien har data ${seriesPeriodText(series)}.`
       );
       $("noteSummary").textContent = "";
       $("noteGaps").textContent = "";
@@ -1890,7 +2021,8 @@
     }
   }
 
-  function renderTable(ds) {
+  function renderTable(view) {
+    const { ds, series } = view;
     const body = $("tableBody");
     body.textContent = "";
     const firstRow = Math.max(0, ds.n - 50);
@@ -1898,7 +2030,7 @@
       const row = el("tr");
       row.append(
         el("td", "", fmtDateTime(ds.t[i])),
-        el("td", "num", fmtLevel(ds.v[i])),
+        el("td", "num", fmtValue(series, ds.v[i])),
         el("td", "", TYPE_NAMES[ds.type[i]]),
         el("td", "", QC_NAMES[ds.q[i]])
       );
@@ -1961,7 +2093,7 @@
           ctx.lineTo(area.right, yl);
           ctx.stroke();
 
-          const text = `Grænse ${limitLabel(info.limit)} cm`;
+          const text = `Grænse ${limitLabel(info.limit)} ${info.unit || "cm"}`;
           ctx.font = `600 14px ${CHART_FONT}`;
           const ty = yl - area.top > 26 ? yl - 7 : yl + 18;
           ctx.textAlign = "left";
@@ -2019,8 +2151,9 @@
     // Forklaringen står som tekst med små linjestykker over grafen
     const legend = $("legend");
     legend.textContent = "";
-    const unit = levelUnit(view.station);
-    legend.append(legendItem("", `Målt (${unit})`));
+    const series = view.series;
+    const unit = unitLabel(series);
+    legend.append(legendItem("", `Målt, ${seriesName(series)} (${unit})`));
     if (forecast.length) legend.append(legendItem("key-forecast", "Prognose (cm, middelvandstand)"));
     if (hasLimit) legend.append(legendItem("key-limit", "Grænse"));
 
@@ -2054,12 +2187,17 @@
     Chart.defaults.color = COLOR.muted;
 
     destroyChart();
-    state.overlay = { limit: hasLimit ? limit : null, now: view.period.toToday ? view.fetchedAt : 0 };
+    state.overlay = {
+      limit: hasLimit ? limit : null,
+      unit: unitShort(series),
+      now: view.period.toToday ? view.fetchedAt : 0,
+    };
     $("chartBlock").hidden = false;
     const canvas = $("chart");
     canvas.setAttribute(
       "aria-label",
-      `Graf over vandstand ved ${view.station.name}. ${view.summary || "Ingen målinger i perioden."}` +
+      `Graf over ${isTemperature(series) ? "vandtemperatur" : "vandstand"} ved ${view.place.name}, ` +
+        `serie ${seriesName(series)} i ${unit}. ${view.summary || "Ingen målinger i perioden."}` +
         (forecast.length ? " Prognosen vises som stiplet linje de næste fem døgn." : "")
     );
 
@@ -2127,7 +2265,8 @@
             suggestedMax: hi + margin,
             grid: { color: COLOR.line },
             border: { display: false },
-            ticks: { maxTicksLimit: small ? 7 : 9, callback: (value) => fmtLevel(value) },
+            title: { display: true, text: unit, color: COLOR.muted, font: { size: small ? 13 : 14 } },
+            ticks: { maxTicksLimit: small ? 7 : 9, callback: (value) => fmtValue(series, value) },
           },
         },
         plugins: {
@@ -2150,7 +2289,7 @@
                   if (over) lines.push("Over grænsen (prognose, andet nulpunkt)");
                   return lines;
                 }
-                const lines = [`${fmtLevel(p.y)} ${unit}, ${TYPE_NAMES[p.k]}`];
+                const lines = [`${fmtValue(series, p.y)} ${unit}, ${TYPE_NAMES[p.k]}`];
                 if (over) lines.push("Over grænsen");
                 return lines;
               },
@@ -2174,16 +2313,18 @@
     if (!view || limit === null || !Number.isFinite(limit)) return;
 
     const text = limitLabel(limit);
+    const series = view.series;
+    const unit = unitShort(series);
     if (view.ds.n) {
       const e = exceedOfSeries(view.ds, limit);
       if (e.count === 0) {
-        note.textContent = `Ingen punkter på den målte kurve ligger over grænsen på ${text} cm.`;
+        note.textContent = `Ingen punkter på den målte kurve ligger over grænsen på ${text} ${unit}.`;
       } else {
         note.textContent =
-          `${fmtCount(e.count)} ${e.count === 1 ? "punkt" : "punkter"} på den målte kurve ligger over grænsen på ${text} cm ` +
+          `${fmtCount(e.count)} ${e.count === 1 ? "punkt" : "punkter"} på den målte kurve ligger over grænsen på ${text} ${unit} ` +
           `(${fmtCount(e.measured)} målt, ${fmtCount(e.computed)} beregnet). ` +
           `Første ${fmtDateTime(e.first)}, seneste ${fmtDateTime(e.last)}. ` +
-          `Højeste værdi ${fmtLevel(e.max)} cm den ${fmtDateTime(e.maxT)}.`;
+          `Højeste værdi ${fmtValue(series, e.max)} ${unit} den ${fmtDateTime(e.maxT)}.`;
       }
     }
 
@@ -2207,8 +2348,16 @@
     overlapNote.textContent = "";
     if (!view) return;
 
-    const station = view.station;
-    if (!station.forecast) {
+    const series = view.series;
+    if (isTemperature(series)) {
+      note.textContent = "Prognosen er for vandstand og vises ikke sammen med vandtemperatur.";
+      return;
+    }
+    if (!series.active) {
+      note.textContent = "Prognosen vises kun sammen med en aktiv serie.";
+      return;
+    }
+    if (!series.forecast) {
       note.textContent = "Ingen prognose for denne station.";
       return;
     }
@@ -2226,8 +2375,8 @@
       return;
     }
 
-    const f = station.forecast;
-    const km = haversineKm(station.lat, station.lon, f.lat, f.lon);
+    const f = series.forecast;
+    const km = haversineKm(series.lat, series.lon, f.lat, f.lon);
     const last = view.forecast[view.forecast.length - 1].t;
     note.textContent =
       `Prognosen er fra DMI's stormflodsmodel DKSS (${f.model}) i et modelpunkt ${fmtDistance(km)} fra stationen ` +
@@ -2235,10 +2384,13 @@
       (km > 5 ? " Modelpunktet ligger langt fra stationen, så prognosen kan afvige meget fra vandstanden her." : "");
 
     const o = overlapOf(view.ds, view.forecast);
-    const basis = datumKnown(station)
+    const basis = isDvr90(series)
       ? " Måling er i DVR90, prognose er afvigelse fra middelvandstand. Prognosen er ikke justeret."
-      : " DMI dokumenterer ikke målingens nulpunkt, og prognosen er afvigelse fra middelvandstand. " +
-        "Forskellen kan derfor skyldes forskellige nulpunkter. Prognosen er ikke justeret.";
+      : series.datum === "lokalt nulpunkt"
+        ? " Målingen er i forhold til et lokalt nulpunkt, og prognosen er afvigelse fra middelvandstand. " +
+          "Forskellen kan derfor skyldes forskellige nulpunkter. Prognosen er ikke justeret."
+        : " DMI dokumenterer ikke målingens nulpunkt, og prognosen er afvigelse fra middelvandstand. " +
+          "Forskellen kan derfor skyldes forskellige nulpunkter. Prognosen er ikke justeret.";
     if (o.n === 0) {
       overlapNote.textContent = "Der er endnu ingen timer med både måling og prognose, så forskellen kan ikke beregnes." + basis;
       return;
@@ -2275,7 +2427,8 @@
 
   // Laver filen af det, der lige er hentet: 15-minutters datasættet og prognosen.
   async function downloadExcel(view) {
-    const { station, period, ds } = view;
+    const { series, place, period, ds } = view;
+    const station = series;
     const forecast = view.forecastState === "ok" ? view.forecast : [];
     if (!ds.n && !forecast.length) return;
 
@@ -2292,8 +2445,8 @@
         : "") + (view.failed.length ? " Nogle perioder mangler, se under grafen." : "");
 
     if (parts.length === 1) {
-      const name = csvFileName(station, period.fra, period.til, 1, 1);
-      saveFile(new Blob(csvPieces(parts[0], station), { type }), name);
+      const name = csvFileName(place, period.fra, period.til, 1, false, 1, 1);
+      saveFile(new Blob(csvPieces(parts[0], csvHeader([series])), { type }), name);
       setStatus(`Excel-filen er hentet: ${name} med ${fmtCount(total)} rækker.` + extra);
       return;
     }
@@ -2305,8 +2458,8 @@
     );
     const list = el("ul");
     parts.forEach((part, index) => {
-      const name = csvFileName(station, period.fra, period.til, index + 1, parts.length);
-      const url = URL.createObjectURL(new Blob(csvPieces(part, station), { type }));
+      const name = csvFileName(place, period.fra, period.til, 1, false, index + 1, parts.length);
+      const url = URL.createObjectURL(new Blob(csvPieces(part, csvHeader([series])), { type }));
       state.blobUrls.push(url);
       const firstYear = part.blocks[0].year;
       const lastYear = part.blocks[part.blocks.length - 1].year;
@@ -2355,29 +2508,47 @@
 
     // Grænseværdien kan ændres uden at hente data igen
     $("graense").addEventListener("change", () => {
-      if (!state.station) return;
+      if (!state.place) return;
       const limit = parseLimit($("graense").value);
       if (Number.isNaN(limit)) {
-        showError($("periodError"), "Grænseværdien skal være et tal i cm, for eksempel 120.");
+        showError($("periodError"), "Grænseværdien skal være et tal, for eksempel 120.");
         return;
       }
       showError($("periodError"), "");
       state.limit = limit;
       const input = readPeriodFields();
-      if (!input.error) {
-        history.replaceState(null, "", stationHash(state.station.id, input));
-        renderSensors(input);
-      }
+      if (!input.error) history.replaceState(null, "", placeHash(state.shown, input));
       renderGauge();
       renderView();
     });
 
+    // Tabellen "Måleserier": radioknappen vælger grafen, fluebenet vælger Excel
+    $("seriesBody").addEventListener("change", (event) => {
+      const input = event.target;
+      if (!state.place || !input || !input.value) return;
+      const series = state.place.series.find((s) => s.key === input.value);
+      if (!series) return;
+      if (input.type === "radio" && input.checked) showSeries(series);
+      if (input.type === "checkbox") {
+        if (input.checked) state.selected.add(series.key);
+        else state.selected.delete(series.key);
+        renderSelectedCount();
+      }
+    });
+    $("selectAll").addEventListener("click", () => {
+      if (!state.place) return;
+      for (const s of state.place.series) state.selected.add(s.key);
+      renderSeriesTable();
+    });
+
     // Seneste måling opdateres hvert 5. minut, mens fanen er synlig
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && state.station && Date.now() - (state.latestAt || 0) >= LIVE_EVERY) refreshLatest();
+      if (!document.hidden && state.place && state.place.active && Date.now() - (state.latestAt || 0) >= LIVE_EVERY) {
+        refreshLatest();
+      }
     });
     smallScreen.addEventListener("change", () => {
-      if (!state.station) return;
+      if (!state.place) return;
       renderGauge();
       renderView();
     });
@@ -2391,14 +2562,15 @@
         .catch(() => {});
     }
 
-    loadLists()
-      .then(() => {
+    loadLists().then(
+      () => {
         window.addEventListener("hashchange", route);
         route();
-      })
-      .catch(() => {
+      },
+      () => {
         showError($("searchError"), "Stationslisten kunne ikke hentes. Prøv at genindlæse siden.");
-      });
+      }
+    );
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
