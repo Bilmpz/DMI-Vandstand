@@ -4,22 +4,38 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 
-// DMI Vandstand: bygger docs/data/stations.json ud fra DMI's stationsliste (oceanObs)
-// og finder et prognosepunkt i stormflodsmodellen DKSS til hver station.
+// DMI Vandstand: bygger docs/data/stations.json ud fra DMI's stationsliste (oceanObs) med alle stationer,
+// aktive og nedlagte, og finder et prognosepunkt i stormflodsmodellen DKSS til hver aktiv station.
 //
 // Kør fra repoets rod:   dotnet run --project DmiVandstand
 // Beregn alle prognosepunkter forfra:   dotnet run --project DmiVandstand -- --refresh-forecast
+// Uden tidsgrænse for prognosepunkter:  dotnet run --project DmiVandstand -- --forecast-minutes=0
 
 internal static class Program
 {
     private const int StationsLimit = 10000;
-    private const string StationsUrl =
-        "https://opendataapi.dmi.dk/v2/oceanObs/collections/station/items?status=Active&limit=10000";
+
+    // Både aktive og nedlagte stationer hentes. Uden status-filter giver DMI også begge, men hver for sig er tydeligst.
+    private static readonly string[] StationsUrls =
+    [
+        "https://opendataapi.dmi.dk/v2/oceanObs/collections/station/items?status=Active&limit=10000",
+        "https://opendataapi.dmi.dk/v2/oceanObs/collections/station/items?status=Inactive&limit=10000",
+    ];
     private const string ForecastBase = "https://opendataapi.dmi.dk/v1/forecastedr/collections";
     private const string ForecastParameter = "sea-mean-deviation";
 
-    private const string ParameterDvr = "sealev_dvr";
-    private const string ParameterReg = "sea_reg";
+    // Parametrene vises i denne rækkefølge. Andre parametre kommer bagefter i alfabetisk orden.
+    private static readonly string[] ParameterOrder = ["sealev_dvr", "sea_reg", "sealev_ln", "tw"];
+
+    private const string StatusActive = "aktiv";
+    private const string StatusClosed = "nedlagt";
+
+    // DMI skriver havnenes og kommunernes ejer på dansk eller engelsk.
+    private static readonly HashSet<string> HarbourOwners =
+        new(["Kommuner/Havne", "Harbours & municipalities"], StringComparer.OrdinalIgnoreCase);
+
+    // DMI's prognose-API svarer nogle gange 429 i lang tid. Så må en kørsel i workflowet ikke hænge.
+    private const int DefaultForecastMinutes = 5;
 
     // Under dette antal stationer er svaret fra DMI ikke til at stole på, og filen overskrives ikke.
     private const int MinStations = 30;
@@ -53,10 +69,14 @@ internal static class Program
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         bool refreshForecast = args.Contains("--refresh-forecast");
+        // Prognosepunkter ledes efter i højst så mange minutter (0 = ingen grænse). Resten prøves igen ved næste kørsel.
+        int forecastMinutes = DefaultForecastMinutes;
+        foreach (string arg in args.Where(a => a.StartsWith("--forecast-minutes=", StringComparison.Ordinal)))
+            forecastMinutes = int.Parse(arg["--forecast-minutes=".Length..], CultureInfo.InvariantCulture);
 
         try
         {
-            return await RunAsync(refreshForecast);
+            return await RunAsync(refreshForecast, TimeSpan.FromMinutes(forecastMinutes));
         }
         catch (Exception ex)
         {
@@ -66,73 +86,82 @@ internal static class Program
         }
     }
 
-    private static async Task<int> RunAsync(bool refreshForecast)
+    private static async Task<int> RunAsync(bool refreshForecast, TimeSpan forecastBudget)
     {
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("DmiVandstand/1.0");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("DmiVandstand/2.0");
         var dmi = new DmiClient(http);
 
         string stationsFile = Path.Combine(ResolveDocsDataDirectory(), "stations.json");
         Console.WriteLine($"Fil: {stationsFile}");
 
-        // 1. Stationsliste (følg next, men stop på tom side eller kort side).
+        // 1. Stationsliste: aktive og nedlagte (følg next, men stop på tom side eller kort side).
         Console.WriteLine("Henter stationsliste fra DMI ...");
-        var records = await FetchStationRecordsAsync(dmi);
+        var records = new List<StationRecord>();
+        foreach (string url in StationsUrls)
+            records.AddRange(await FetchStationRecordsAsync(dmi, url));
         var byStation = records.GroupBy(r => r.StationId).ToList();
         Console.WriteLine($"Records: {records.Count}. Unikke stationer: {byStation.Count}.");
 
-        // 2. Én gældende record pr. station, og udvælgelse efter ejer og parameter.
+        // 2. Alle stationer kommer med. Ejer og status tages fra den gældende record.
         var now = DateTimeOffset.UtcNow;
         var selected = new List<StationOut>();
-        int closed = 0, notSelected = 0;
+        int noPosition = 0;
 
         foreach (var group in byStation)
         {
             var current = group.FirstOrDefault(r => r.ValidTo is null)
                           ?? group.OrderByDescending(r => r.ValidFrom ?? DateTimeOffset.MinValue).First();
 
-            if (current.OperationTo is { } operationTo && operationTo < now)
+            // Uden koordinat kan stationen ikke findes fra et postnummer. Det er ikke set 26.11.2026.
+            var positioned = current.Lat is not null && current.Lon is not null
+                ? current
+                : group.Where(r => r.Lat is not null && r.Lon is not null)
+                       .OrderByDescending(r => r.ValidFrom ?? DateTimeOffset.MinValue)
+                       .FirstOrDefault();
+            if (positioned is null)
             {
-                closed++;
+                noPosition++;
+                Warn($"Station {current.StationId} {current.Name} har ingen koordinat og kommer ikke med.");
                 continue;
             }
 
-            string? owner = null, parameter = null;
-            if (current.Owner == "DMI" && current.Parameters.Contains(ParameterDvr))
-            {
-                owner = "DMI";
-                parameter = ParameterDvr;
-            }
-            else if (current.Owner.StartsWith("Kystdirektoratet", StringComparison.OrdinalIgnoreCase) &&
-                     current.Parameters.Contains(ParameterReg))
-            {
-                owner = "Kystdirektoratet";
-                parameter = ParameterReg;
-            }
+            bool closed = current.Status.Equals("Inactive", StringComparison.OrdinalIgnoreCase) ||
+                          (current.OperationTo is { } operationTo && operationTo < now);
 
-            if (owner is null || parameter is null || current.Lat is null || current.Lon is null)
-            {
-                notSelected++;
-                continue;
-            }
-
-            var dates = group
+            var fromDates = group
                 .SelectMany(r => new[] { r.OperationFrom, r.ValidFrom })
                 .Where(d => d.HasValue)
                 .Select(d => d!.Value)
                 .ToList();
-            string from = (dates.Count > 0 ? dates.Min() : now).UtcDateTime
-                .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            string from = Day(fromDates.Count > 0 ? fromDates.Min() : now);
+
+            string? to = null;
+            if (closed)
+            {
+                var end = current.OperationTo
+                          ?? group.Select(r => r.OperationTo ?? r.ValidTo).Where(d => d.HasValue).Max();
+                to = end is { } e ? Day(e) : null;
+            }
+
+            var parameters = group
+                .SelectMany(r => r.Parameters)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(x => Array.IndexOf(ParameterOrder, x) is int k && k >= 0 ? k : ParameterOrder.Length)
+                .ThenBy(x => x, StringComparer.Ordinal)
+                .ToList();
 
             selected.Add(new StationOut
             {
                 Id = current.StationId,
                 Name = current.Name,
-                Owner = owner,
-                Parameter = parameter,
-                Lat = Math.Round(current.Lat.Value, 4),
-                Lon = Math.Round(current.Lon.Value, 4),
+                Owner = OwnerName(current.Owner),
+                Status = closed ? StatusClosed : StatusActive,
+                Lat = Math.Round(positioned.Lat!.Value, 4),
+                Lon = Math.Round(positioned.Lon!.Value, 4),
                 From = from,
+                To = to,
+                Parameters = parameters,
             });
         }
 
@@ -142,11 +171,12 @@ internal static class Program
             .ThenBy(s => s.Id, StringComparer.Ordinal)
             .ToList();
 
-        Console.WriteLine(
-            $"Med: {selected.Count} stationer " +
-            $"({selected.Count(s => s.Owner == "DMI")} DMI med {ParameterDvr}, " +
-            $"{selected.Count(s => s.Owner == "Kystdirektoratet")} Kystdirektoratet med {ParameterReg}). " +
-            $"Sprunget over: {closed} nedlagte, {notSelected} med anden ejer eller uden parameteren.");
+        Console.WriteLine($"Med: {selected.Count} stationer og {selected.Sum(s => s.Parameters.Count)} måleserier (station × parameter).");
+        foreach (var g in selected.GroupBy(s => (s.Owner, s.Status)).OrderBy(g => g.Key.Owner).ThenBy(g => g.Key.Status))
+            Console.WriteLine($"  {g.Key.Owner}, {g.Key.Status}: {g.Count()} stationer, {g.Sum(s => s.Parameters.Count)} måleserier");
+        foreach (var g in selected.SelectMany(s => s.Parameters).GroupBy(x => x).OrderBy(g => g.Key, StringComparer.Ordinal))
+            Console.WriteLine($"  Parameter {g.Key}: {g.Count()} stationer");
+        if (noPosition > 0) Console.WriteLine($"  Uden koordinat: {noPosition}");
 
         if (selected.Count < MinStations)
         {
@@ -160,7 +190,8 @@ internal static class Program
         var known = (existing?.Stations ?? []).ToDictionary(s => s.Id, StringComparer.Ordinal);
         var toCompute = new List<StationOut>();
 
-        foreach (var station in selected)
+        // Prognosen vises kun sammen med aktive stationer, så nedlagte får ikke et prognosepunkt.
+        foreach (var station in selected.Where(s => s.Status == StatusActive))
         {
             bool samePlace = known.TryGetValue(station.Id, out var old) &&
                              old.Lat == station.Lat && old.Lon == station.Lon;
@@ -171,6 +202,30 @@ internal static class Program
                 toCompute.Add(station);
         }
 
+        // Stationer i nøjagtig samme koordinat deler prognosepunkt. Det sparer kald til DMI.
+        var reusable = new Dictionary<(double, double), ForecastOut>();
+        foreach (var s in selected.Where(s => s.Forecast is not null && !toCompute.Contains(s)))
+            reusable.TryAdd((s.Lat, s.Lon), s.Forecast!);
+        var sharing = new List<(StationOut Station, StationOut Source)>();
+        var firstAt = new Dictionary<(double, double), StationOut>();
+        foreach (var s in toCompute.ToList())
+        {
+            if (!refreshForecast && reusable.TryGetValue((s.Lat, s.Lon), out var f))
+            {
+                s.Forecast = f;
+                toCompute.Remove(s);
+            }
+            else if (firstAt.TryGetValue((s.Lat, s.Lon), out var source))
+            {
+                sharing.Add((s, source));
+                toCompute.Remove(s);
+            }
+            else
+            {
+                firstAt[(s.Lat, s.Lon)] = s;
+            }
+        }
+
         var pending = new List<string>();
         if (toCompute.Count > 0)
         {
@@ -178,10 +233,21 @@ internal static class Program
             var models = await LoadModelsAsync(dmi);
             string hour = NextFullHourUtc();
 
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            var stations = new SemaphoreSlim(2); // to stationer ad gangen
+            int skipped = 0;
+
             var tasks = toCompute.Select(async station =>
             {
+                await stations.WaitAsync();
                 try
                 {
+                    if (forecastBudget > TimeSpan.Zero && clock.Elapsed > forecastBudget)
+                    {
+                        lock (pending) pending.Add(station.Id);
+                        Interlocked.Increment(ref skipped);
+                        return;
+                    }
                     station.Forecast = await FindForecastAsync(dmi, station, models, hour);
                     string text = station.Forecast is { } f
                         ? $"{f.Model} [{f.Lon}, {f.Lat}], {DistanceKm(station.Lat, station.Lon, f.Lat, f.Lon) * 1000:0} m fra stationen"
@@ -194,15 +260,27 @@ internal static class Program
                     lock (pending) pending.Add(station.Id);
                     Warn($"Prognosepunkt for {station.Id} {station.Name} kunne ikke findes: {ex.Message} Prøves igen ved næste kørsel.");
                 }
+                finally
+                {
+                    stations.Release();
+                }
             });
             await Task.WhenAll(tasks);
+            if (skipped > 0)
+                Warn($"Tidsgrænsen på {forecastBudget.TotalMinutes:0} minutter for prognosepunkter er nået. {skipped} stationer prøves igen ved næste kørsel.");
         }
         else
         {
-            Console.WriteLine("Alle prognosepunkter er genbrugt fra den eksisterende fil.");
+            Console.WriteLine("Alle prognosepunkter er genbrugt fra den eksisterende fil eller fra en station i samme punkt.");
         }
 
-        foreach (var g in selected.GroupBy(s => s.Forecast?.Model ?? "ingen").OrderBy(g => g.Key))
+        foreach (var (station, source) in sharing)
+        {
+            station.Forecast = source.Forecast;
+            if (pending.Contains(source.Id)) pending.Add(station.Id);
+        }
+
+        foreach (var g in selected.Where(s => s.Status == StatusActive).GroupBy(s => s.Forecast?.Model ?? "ingen").OrderBy(g => g.Key))
             Console.WriteLine($"  Prognosemodel {g.Key}: {g.Count()} stationer");
 
         // 4. Skriv filen (UTF-8 uden BOM).
@@ -210,7 +288,7 @@ internal static class Program
         {
             GeneratedUtc = now.UtcDateTime.ToString("yyyy-MM-dd'T'HH':'mm':'ss'Z'", CultureInfo.InvariantCulture),
             Stations = selected,
-            ForecastPending = pending.OrderBy(id => id, StringComparer.Ordinal).ToList(),
+            ForecastPending = pending.Distinct().OrderBy(id => id, StringComparer.Ordinal).ToList(),
         };
 
         Directory.CreateDirectory(Path.GetDirectoryName(stationsFile)!);
@@ -227,10 +305,10 @@ internal static class Program
 
     // ---------- Stationsliste ----------
 
-    private static async Task<List<StationRecord>> FetchStationRecordsAsync(DmiClient dmi)
+    private static async Task<List<StationRecord>> FetchStationRecordsAsync(DmiClient dmi, string firstUrl)
     {
         var records = new List<StationRecord>();
-        string? url = StationsUrl;
+        string? url = firstUrl;
         int pages = 0;
 
         while (!string.IsNullOrEmpty(url) && pages < 50)
@@ -432,6 +510,22 @@ internal static class Program
         return 2 * r * Math.Asin(Math.Sqrt(a));
     }
 
+    // ---------- Ejer og datoer ----------
+
+    // Ejeren skrives som "DMI", "Kystdirektoratet", "Havn/kommune" eller "Ikke oplyst".
+    private static string OwnerName(string raw)
+    {
+        string owner = raw.Trim();
+        if (owner.Length == 0) return "Ikke oplyst";
+        if (owner.Equals("DMI", StringComparison.OrdinalIgnoreCase)) return "DMI";
+        if (owner.StartsWith("Kystdirektoratet", StringComparison.OrdinalIgnoreCase)) return "Kystdirektoratet";
+        if (HarbourOwners.Contains(owner)) return "Havn/kommune";
+        return owner; // ukendt ejer: DMI's egen tekst
+    }
+
+    private static string Day(DateTimeOffset d) =>
+        d.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
     // ---------- Fil og beskeder ----------
 
     private static StationsFile? ReadExisting(string path)
@@ -546,6 +640,7 @@ internal sealed class StationRecord
     public required string StationId { get; init; }
     public required string Name { get; init; }
     public required string Owner { get; init; }
+    public string Status { get; init; } = "";
     public required HashSet<string> Parameters { get; init; }
     public double? Lat { get; init; }
     public double? Lon { get; init; }
@@ -583,6 +678,7 @@ internal sealed class StationRecord
             StationId = id,
             Name = string.IsNullOrWhiteSpace(name) ? id : name.Trim(),
             Owner = (Text(p, "owner") ?? "").Trim(),
+            Status = (Text(p, "status") ?? "").Trim(),
             Parameters = parameters,
             Lat = lat,
             Lon = lon,
@@ -620,10 +716,12 @@ internal sealed class StationOut
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Owner { get; set; } = "";
-    public string Parameter { get; set; } = "";
+    public string Status { get; set; } = "";
     public double Lat { get; set; }
     public double Lon { get; set; }
     public string From { get; set; } = "";
+    public string? To { get; set; }
+    public List<string> Parameters { get; set; } = [];
     public ForecastOut? Forecast { get; set; }
 }
 
