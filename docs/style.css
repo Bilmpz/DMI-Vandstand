@@ -339,7 +339,18 @@ input[type="text"]::placeholder {
 }
 
 .more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
   margin-top: 8px;
+}
+
+/* "beregnet" under tallet, så værdien ikke støder ind i tidspunktet */
+.row-calc {
+  display: block;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--daempet);
 }
 
 .row-value.is-wide {

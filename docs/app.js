@@ -1285,10 +1285,16 @@
     return ADAPTERS[series.source] || ADAPTERS[SRC_DMI];
   }
 
-  // Seneste måling (eller beregning) i en serie
+  // Seneste måling (eller beregning) i en serie. Gemmes i 2 minutter, så "Vis 5 mere" ikke henter de første igen.
+  const latestCache = new Map();
+
   async function fetchLatest(series, signal) {
+    const hit = latestCache.get(series.key);
+    if (hit && Date.now() - hit.at < 2 * MIN) return hit.latest;
     const r = await adapterOf(series).latest(series, signal);
-    return r ? r.latest : null;
+    const latest = r ? r.latest : null;
+    latestCache.set(series.key, { at: Date.now(), latest });
+    return latest;
   }
 
   // Kildens navn i fejlbeskeder, fx "SMHI svarer ikke lige nu"
@@ -1843,7 +1849,7 @@
     placeOf: new Map(),
     postnumre: null,
     lastPostnr: null,
-    lastWithClosed: false,
+    lastSearch: null, // { nedlagte, kunMaalt, antal }
     sources: [], // status for kilderne fra stations.json
     neighbours: [], // havn uden måler: de nærmeste målinger
     place: null, // stedet, der vises
@@ -1929,6 +1935,8 @@
       til: q.get("til"),
       graense: q.get("graense"),
       nedlagte: q.get("nedlagte") === "1",
+      kunMaalt: q.get("kunmaalt") === "1",
+      antal: Math.max(5, Math.min(50, parseInt(q.get("antal"), 10) || 5)),
     };
   }
 
@@ -1941,12 +1949,22 @@
       showError($("searchError"), `Station ${h.station} findes ikke i stationslisten. Søg på et postnummer i stedet.`);
       return;
     }
-    showSearch(h.postnr, h.nedlagte);
+    showSearch(h.postnr, { nedlagte: h.nedlagte, kunMaalt: h.kunMaalt, antal: h.antal });
+  }
+
+  // Adressen for en søgning: #postnr=3070&kunmaalt=1&antal=10
+  function searchHash(postnr, opts) {
+    const q = new URLSearchParams();
+    q.set("postnr", postnr);
+    if (opts.nedlagte) q.set("nedlagte", "1");
+    if (opts.kunMaalt) q.set("kunmaalt", "1");
+    if (opts.antal > 5) q.set("antal", String(opts.antal));
+    return "#" + q.toString();
   }
 
   // ---------- Søgning ----------
 
-  function showSearch(postnr, withClosed) {
+  function showSearch(postnr, opts) {
     leavePlace();
     $("viewStation").hidden = true;
     $("viewSearch").hidden = false;
@@ -1958,7 +1976,7 @@
       return;
     }
     $("postnr").value = postnr;
-    runSearch(postnr, withClosed);
+    runSearch(postnr, opts || { nedlagte: false, kunMaalt: false, antal: 5 });
   }
 
   function placeHref(place) {
@@ -1982,7 +2000,9 @@
     return `${count} ${count === 1 ? "måleserie" : "måleserier"}${days}`;
   }
 
-  function runSearch(postnr, withClosed) {
+  // De nærmeste steder. opts.nedlagte tager nedlagte steder med, opts.kunMaalt skjuler havne uden måler,
+  // og opts.antal er antallet af steder (5, 10, 15 ...).
+  function runSearch(postnr, opts) {
     if (state.searchJob) state.searchJob.abort();
     $("results").hidden = true;
 
@@ -1993,8 +2013,11 @@
     }
 
     state.lastPostnr = postnr;
-    state.lastWithClosed = !!withClosed;
-    const nearest = nearestPlaces(state.places, hit.lat, hit.lon, 5, withClosed);
+    state.lastSearch = opts;
+    const filter = opts.kunMaalt ? (place) => place.kind !== "havn" : null;
+    const nearest = nearestPlaces(state.places, hit.lat, hit.lon, opts.antal + 1, opts.nedlagte, filter);
+    const hasMore = nearest.length > opts.antal;
+    nearest.length = Math.min(nearest.length, opts.antal);
     $("resultsTitle").textContent = `Nærmeste steder ved ${postnr} ${hit.navn || ""}`.trim();
 
     const list = $("resultRows");
@@ -2010,6 +2033,9 @@
       const time = el("span", "row-time");
       meta.append(el("span", "row-owner", placeOwnerText(place)), el("span", "row-dist", fmtKm(km)), time);
       const value = el("span", "row-value", place.active ? "Henter …" : "");
+      const valueText = el("span", "", value.textContent);
+      value.textContent = "";
+      value.append(valueText);
       if (!place.active) {
         const to = parseIsoDate(place.to);
         value.textContent = "Nedlagt" + (to ? `, data til ${fmtDateParts(to)}` : "");
@@ -2020,11 +2046,12 @@
       const item = el("li");
       item.append(link);
       list.append(item);
-      return { place, series: place.main, value, time };
+      return { place, series: place.main, value, valueText, time };
     });
 
-    const toggle = $("closedToggle");
-    toggle.textContent = withClosed ? "Vis kun steder med aktive stationer" : "Vis også nedlagte steder";
+    $("closedToggle").textContent = opts.nedlagte ? "Vis kun steder med aktive stationer" : "Vis også nedlagte steder";
+    $("measuredToggle").textContent = opts.kunMaalt ? "Vis også havne uden måler" : "Vis kun steder med målinger";
+    $("moreBtn").hidden = !hasMore;
     $("results").hidden = false;
 
     // Seneste måling i hovedserien hentes live for de aktive steder.
@@ -2046,7 +2073,9 @@
             row.value.textContent = `Ingen ny måling siden ${fmtDateTime(latest.t)}`;
             row.value.classList.add("is-wide");
           } else {
-            row.value.textContent = `${fmtValue(row.series, latest.v)} ${unitShort(row.series)}` + (computed ? " beregnet" : "");
+            row.valueText.textContent = `${fmtValue(row.series, latest.v)} ${unitShort(row.series)}`;
+            // "beregnet" står på sin egen linje under tallet, så den ikke støder ind i tidspunktet
+            if (computed) row.value.append(el("span", "row-calc", "beregnet"));
             row.time.textContent = fmtDateTime(latest.t);
           }
         } catch (err) {
@@ -2177,9 +2206,7 @@
     $("viewSearch").hidden = true;
     $("viewStation").hidden = false;
     document.title = `${place.name} – DMI Vandstand`;
-    $("backLink").href = state.lastPostnr
-      ? "#postnr=" + state.lastPostnr + (state.lastWithClosed ? "&nedlagte=1" : "")
-      : "#";
+    $("backLink").href = state.lastPostnr && state.lastSearch ? searchHash(state.lastPostnr, state.lastSearch) : "#";
 
     $("stName").textContent = place.name;
     const facts = $("stFacts");
@@ -3503,13 +3530,14 @@
       runPeriod({ excel: false });
     });
     $("excelBtn").addEventListener("click", () => runPeriod({ excel: true }));
-    $("closedToggle").addEventListener("click", () => {
-      if (!state.lastPostnr) return;
-      const q = new URLSearchParams();
-      q.set("postnr", state.lastPostnr);
-      if (!state.lastWithClosed) q.set("nedlagte", "1");
-      location.hash = "#" + q.toString();
-    });
+    // Søgevalg: nedlagte steder, kun steder med målinger og 5 steder mere ad gangen
+    const changeSearch = (change) => {
+      if (!state.lastPostnr || !state.lastSearch) return;
+      location.hash = searchHash(state.lastPostnr, Object.assign({}, state.lastSearch, change));
+    };
+    $("closedToggle").addEventListener("click", () => changeSearch({ nedlagte: !state.lastSearch.nedlagte }));
+    $("measuredToggle").addEventListener("click", () => changeSearch({ kunMaalt: !state.lastSearch.kunMaalt }));
+    $("moreBtn").addEventListener("click", () => changeSearch({ antal: state.lastSearch.antal + 5 }));
     $("stopBtn").addEventListener("click", stopJob);
     $("shortcuts").addEventListener("click", (event) => {
       const range = event.target && event.target.getAttribute && event.target.getAttribute("data-range");
