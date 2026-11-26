@@ -308,12 +308,294 @@
     return Number.isNaN(t) ? null : { t, v: p.value, q: p.qcStatus || "" };
   }
 
+  // Målingen ca. 60 minutter før, til tendensen. Vælger den, der ligger tættest på.
+  async function fetchReference(station, targetMs, signal) {
+    const range = encodeURIComponent(isoZ(targetMs - 15 * MIN) + "/" + isoZ(targetMs + 15 * MIN));
+    const data = await getJsonRetry(obsUrl(station, `datetime=${range}&limit=100`), signal, [1000]);
+    let best = null;
+    for (const f of data.features || []) {
+      const p = f.properties;
+      if (!p || typeof p.value !== "number") continue;
+      const t = Date.parse(p.observed);
+      if (Number.isNaN(t)) continue;
+      if (!best || Math.abs(t - targetMs) < Math.abs(best.t - targetMs)) best = { t, v: p.value };
+    }
+    return best;
+  }
+
+  // ====================================================================
+  // Målinger i en periode
+  // ====================================================================
+
+  const PAGE_LIMIT = 300000;
+  const CACHE_FOR = 10 * MIN;
+  const QC_NAMES = [""]; // qcStatus gemmes som et lille tal pr. række
+
+  function qcCode(text) {
+    if (!text) return 0;
+    let i = QC_NAMES.indexOf(text);
+    if (i < 0) {
+      QC_NAMES.push(text);
+      i = QC_NAMES.length - 1;
+    }
+    return i;
+  }
+
+  function isoZ(ms) {
+    return new Date(ms).toISOString().slice(0, 19) + "Z";
+  }
+
+  function nextLink(data) {
+    for (const link of data.links || []) {
+      if (link.rel === "next" && link.href) return link.href;
+    }
+    return null;
+  }
+
+  // Perioden deles i kalenderkvartaler. Målt 26.11.2026 for station 30336 med 3 kald ad gangen:
+  // tre år tog 4,9 s i kvartaler, 6,3 s i halvår og 6,6 s i hele år. Et kvartal er ca. 3,7 MB JSON.
+  function planChunks(startMs, endMs) {
+    const chunks = [];
+    let start = startMs;
+    while (start <= endMs) {
+      const d = new Date(start);
+      const next = Date.UTC(d.getUTCFullYear(), Math.floor(d.getUTCMonth() / 3) * 3 + 3, 1);
+      chunks.push({ start, end: Math.min(endMs, next - 1000), year: d.getUTCFullYear() });
+      start = next;
+    }
+    return chunks;
+  }
+
+  // Kompakte arrays: tid, værdi og qcStatus. Sorteret efter tid, uden dubletter.
+  function packSeries(t, v, q) {
+    const n = t.length;
+    const order = new Uint32Array(n);
+    let ascending = true;
+    let descending = true;
+    for (let i = 0; i < n; i++) {
+      order[i] = i;
+      if (i > 0 && t[i] <= t[i - 1]) ascending = false;
+      if (i > 0 && t[i] >= t[i - 1]) descending = false;
+    }
+    if (!ascending) {
+      if (descending) order.reverse(); // DMI sender nyeste først
+      else order.sort((a, b) => t[a] - t[b]);
+    }
+
+    const T = new Float64Array(n);
+    const V = new Float64Array(n);
+    const Q = new Uint8Array(n);
+    let m = 0;
+    for (let k = 0; k < n; k++) {
+      const i = order[k];
+      if (m > 0 && t[i] === T[m - 1]) continue;
+      T[m] = t[i];
+      V[m] = v[i];
+      Q[m] = q[i];
+      m++;
+    }
+    return { t: T.subarray(0, m), v: V.subarray(0, m), q: Q.subarray(0, m), n: m };
+  }
+
+  const EMPTY_SERIES = packSeries([], [], []);
+
+  // Bidderne ligger i tidsrækkefølge. datetime er inklusiv i begge ender, så dubletter i kanterne fjernes.
+  function mergeSeries(parts) {
+    let total = 0;
+    for (const p of parts) total += p.n;
+    const T = new Float64Array(total);
+    const V = new Float64Array(total);
+    const Q = new Uint8Array(total);
+    let m = 0;
+    for (const p of parts) {
+      for (let i = 0; i < p.n; i++) {
+        if (m > 0 && p.t[i] <= T[m - 1]) continue;
+        T[m] = p.t[i];
+        V[m] = p.v[i];
+        Q[m] = p.q[i];
+        m++;
+      }
+    }
+    return { t: T.subarray(0, m), v: V.subarray(0, m), q: Q.subarray(0, m), n: m };
+  }
+
+  // Henter én bid. DMI sender altid et next-link, også når der ikke er mere,
+  // så løkken stopper på en tom side eller en side, der er kortere end limit.
+  async function fetchWindow(station, startMs, endMs, signal) {
+    const range = encodeURIComponent(isoZ(startMs) + "/" + isoZ(endMs));
+    let url = obsUrl(station, `datetime=${range}&limit=${PAGE_LIMIT}`);
+    const t = [];
+    const v = [];
+    const q = [];
+
+    for (let page = 0; url && page < 100; page++) {
+      const data = await getJsonRetry(url, signal, [1000, 3000]); // en fejlet bid prøves igen 2 gange
+      const features = data.features || [];
+      for (const f of features) {
+        const p = f.properties;
+        if (!p || typeof p.value !== "number") continue;
+        const ms = Date.parse(p.observed);
+        if (Number.isNaN(ms)) continue;
+        t.push(ms);
+        v.push(p.value);
+        q.push(qcCode(p.qcStatus));
+      }
+      const returned = typeof data.numberReturned === "number" ? data.numberReturned : features.length;
+      if (features.length === 0 || returned < PAGE_LIMIT) break;
+      url = nextLink(data);
+    }
+    return packSeries(t, v, q); // JSON'en smides væk her
+  }
+
+  // Afsluttede kvartaler genbruges i 10 minutter, så "Vis" efterfulgt af "Hent Excel" ikke henter alt to gange.
+  // Bidden med de nyeste målinger hentes altid igen.
+  const chunkCache = new Map();
+  let chunkCacheStation = null;
+
+  class DmiDownError extends Error {}
+
+  async function fetchRange(station, startMs, endMs, opts) {
+    const options = opts || {};
+    const key0 = station.id + "|" + station.parameter;
+    if (chunkCacheStation !== key0) {
+      chunkCache.clear();
+      chunkCacheStation = key0;
+    }
+    const startedAt = Date.now();
+    for (const [key, entry] of chunkCache) {
+      if (startedAt - entry.at >= CACHE_FOR) chunkCache.delete(key);
+    }
+
+    const chunks = planChunks(startMs, endMs);
+    const parts = new Array(chunks.length);
+    const failed = [];
+    let done = 0;
+    const report = (chunk) => {
+      if (options.onProgress) options.onProgress({ year: chunk.year, done, total: chunks.length });
+    };
+
+    await pool(chunks, 3, async (chunk, i) => {
+      report(chunk);
+      const key = chunk.start + "|" + chunk.end;
+      const hit = chunkCache.get(key);
+      if (hit && chunk.end < hit.at - HOUR) {
+        parts[i] = hit.series;
+      } else {
+        try {
+          const at = Date.now();
+          parts[i] = await fetchWindow(station, chunk.start, chunk.end, options.signal);
+          chunkCache.set(key, { at, series: parts[i] });
+        } catch (err) {
+          if (options.signal && options.signal.aborted) throw err;
+          failed.push(chunk);
+          parts[i] = EMPTY_SERIES;
+        }
+      }
+      done++;
+      report(chunk);
+    });
+
+    if (failed.length === chunks.length) throw new DmiDownError("DMI svarer ikke");
+    failed.sort((a, b) => a.start - b.start);
+    return { series: mergeSeries(parts), failed };
+  }
+
+  // Fra og Til er danske datoer. Perioden går fra Fra kl. 00:00 til Til kl. 24:00 i dansk tid, dog højst til nu.
+  function periodOf(fra, til, now) {
+    const start = dkToUtc(fra.y, fra.m, fra.d, 0, 0);
+    const endExclusive = dkToUtc(til.y, til.m, til.d + 1, 0, 0);
+    const toToday = compareDates(til, todayDk(now)) === 0;
+    return {
+      fra,
+      til,
+      start,
+      end: toToday ? Math.min(now, endExclusive - 1) : endExclusive - 1,
+      apiEnd: endExclusive - 1000,
+      toToday,
+    };
+  }
+
+  // ====================================================================
+  // 15-minutters datasæt (bruges i graf, tabel og Excel-fil)
+  // ====================================================================
+
+  const TYPE_MEASURED = 1;
+  const TYPE_COMPUTED = 2;
+  const TYPE_NAMES = ["", "målt", "beregnet"];
+  const MAX_SPAN = 20 * MIN; // nabomålinger må højst ligge så langt fra hinanden
+
+  // obs: målinger sorteret efter tid. Giver én række pr. kvarter (:00, :15, :30, :45):
+  // - findes der en måling præcis på tidspunktet, bruges den ("målt")
+  // - ellers beregnes værdien lineært mellem nærmeste måling før og efter,
+  //   hvis de højst ligger 20 minutter fra hinanden ("beregnet", 1 decimal)
+  // - ellers er der ingen række. Hullerne tælles frem til gapEndMs.
+  function build15(obs, startMs, endMs, gapEndMs) {
+    const first = Math.ceil(startMs / MIN15) * MIN15;
+    const last = Math.floor(endMs / MIN15) * MIN15;
+    const slots = last >= first ? Math.round((last - first) / MIN15) + 1 : 0;
+    const gapEnd = gapEndMs === undefined ? endMs : gapEndMs;
+
+    const t = new Float64Array(slots);
+    const v = new Float64Array(slots);
+    const type = new Uint8Array(slots);
+    const q = new Uint8Array(slots);
+    const N = obs.n;
+    let n = 0;
+    let gaps = 0;
+    let i = 0;
+
+    for (let k = 0; k < slots; k++) {
+      const g = first + k * MIN15;
+      while (i < N && obs.t[i] < g) i++;
+
+      if (i < N && obs.t[i] === g) {
+        t[n] = g;
+        v[n] = obs.v[i];
+        type[n] = TYPE_MEASURED;
+        q[n] = obs.q[i];
+        n++;
+      } else if (i > 0 && i < N && obs.t[i] - obs.t[i - 1] <= MAX_SPAN) {
+        const a = i - 1;
+        const share = (g - obs.t[a]) / (obs.t[i] - obs.t[a]);
+        t[n] = g;
+        v[n] = round1(obs.v[a] + (obs.v[i] - obs.v[a]) * share);
+        type[n] = TYPE_COMPUTED;
+        q[n] = 0;
+        n++;
+      } else if (g <= gapEnd) {
+        gaps++;
+      }
+    }
+
+    return { t: t.subarray(0, n), v: v.subarray(0, n), type: type.subarray(0, n), q: q.subarray(0, n), n, gaps };
+  }
+
+  // Seneste, højeste og laveste værdi i datasættet
+  function seriesStats(ds) {
+    if (!ds.n) return null;
+    let hi = 0;
+    let lo = 0;
+    for (let i = 1; i < ds.n; i++) {
+      if (ds.v[i] > ds.v[hi]) hi = i;
+      if (ds.v[i] < ds.v[lo]) lo = i;
+    }
+    const at = (i) => ({ t: ds.t[i], v: ds.v[i], type: ds.type[i] });
+    return { last: at(ds.n - 1), max: at(hi), min: at(lo) };
+  }
+
   // ====================================================================
   // Siden
   // ====================================================================
 
   const api = {
     MIN15,
+    QC_NAMES,
+    planChunks,
+    packSeries,
+    mergeSeries,
+    periodOf,
+    build15,
+    seriesStats,
     offsetMin,
     dkToUtc,
     dkParts,
@@ -351,6 +633,16 @@
     lastPostnr: null,
     station: null,
     searchJob: null,
+    job: null, // hentning af en periode
+    liveJob: null, // seneste måling
+    liveTimer: 0,
+    progressTimer: 0,
+    latest: null,
+    latestRef: null,
+    latestAt: 0,
+    latestError: false,
+    limit: null,
+    view: null,
   };
 
   function el(tag, className, text) {
@@ -505,8 +797,20 @@
 
   // ---------- Station ----------
 
+  const LIVE_EVERY = 5 * MIN;
+  const GAP_GRACE = 30 * MIN; // DMI's målinger kommer med forsinkelse, så de nyeste kvarterer tælles ikke som huller
+  const smallScreen = window.matchMedia("(max-width: 760px)");
+
   function leaveStation() {
+    if (state.job) state.job.abort();
+    if (state.liveJob) state.liveJob.abort();
+    clearInterval(state.liveTimer);
+    clearTimeout(state.progressTimer);
     state.station = null;
+    state.latest = null;
+    state.latestRef = null;
+    state.view = null;
+    $("progress").hidden = true;
   }
 
   function fact(term, text) {
@@ -515,8 +819,68 @@
     return box;
   }
 
+  function stationFrom(station) {
+    return parseIsoDate(station.from);
+  }
+
+  function defaultPeriod(station) {
+    const til = todayDk();
+    let fra = addDays(til, -7);
+    const from = stationFrom(station);
+    if (from && compareDates(fra, from) < 0) fra = from;
+    return { fra, til };
+  }
+
+  // "120", "120,5", "-20" eller tomt. Giver null for tomt og NaN for noget, der ikke er et tal.
+  function parseLimit(text) {
+    const s = (text || "").trim().replace(",", ".").replace(MINUS, "-");
+    if (s === "") return null;
+    return /^[+-]?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN;
+  }
+
+  function limitText(limit) {
+    return limit === null ? "" : String(limit).replace(".", ",");
+  }
+
+  function stationHash(id, input) {
+    const q = new URLSearchParams();
+    q.set("station", id);
+    if (input) {
+      const def = defaultPeriod(state.byId.get(id));
+      const isDefault = compareDates(input.fra, def.fra) === 0 && compareDates(input.til, def.til) === 0;
+      if (!isDefault) {
+        q.set("fra", isoDate(input.fra));
+        q.set("til", isoDate(input.til));
+      }
+      if (input.limit !== null && !Number.isNaN(input.limit)) q.set("graense", String(input.limit));
+    }
+    return "#" + q.toString();
+  }
+
+  // Skift måler, hvis stedet har flere
+  function renderSensors(input) {
+    const station = state.station;
+    const place = state.placeOf.get(station.id);
+    const box = $("stSensors");
+    box.textContent = "";
+    box.hidden = !place || place.stations.length < 2;
+    if (box.hidden) return;
+
+    box.append(el("span", "", `Stedet har ${place.stations.length} målere`));
+    for (const s of place.stations) {
+      if (s.id === station.id) {
+        box.append(el("strong", "", `${s.name} (vist)`));
+      } else {
+        const link = el("a", "", s.name);
+        link.href = stationHash(s.id, input);
+        box.append(link);
+      }
+    }
+  }
+
   function showStation(station, h) {
     if (state.searchJob) state.searchJob.abort();
+    leaveStation();
     state.station = station;
 
     $("viewSearch").hidden = true;
@@ -526,7 +890,7 @@
 
     $("stName").textContent = station.name;
     const datum = station.parameter === "sealev_dvr" ? "sealev_dvr, DVR90" : `${station.parameter}, DVR90 ifølge DMI`;
-    const from = parseIsoDate(station.from);
+    const from = stationFrom(station);
     const facts = $("stFacts");
     facts.textContent = "";
     facts.append(
@@ -536,7 +900,384 @@
       fact("Data fra", from ? fmtDateParts(from) : station.from)
     );
 
+    // Periode og grænseværdi fra adressen, ellers de seneste 7 døgn
+    let fra = parseIsoDate(h.fra);
+    let til = parseIsoDate(h.til);
+    if (!fra || !til) ({ fra, til } = defaultPeriod(station));
+    const limit = parseLimit(h.graense);
+    state.limit = Number.isNaN(limit) ? null : limit;
+    $("fra").value = fmtDateParts(fra);
+    $("til").value = fmtDateParts(til);
+    $("graense").value = limitText(state.limit);
+    renderSensors({ fra, til, limit: state.limit });
+
+    for (const id of ["chartBlock", "notes", "tableBlock", "dataStatus", "excelParts"]) $(id).hidden = true;
+    for (const id of ["periodForm", "shortcuts", "nowBlock", "stSource"]) $(id).hidden = false;
+    showError($("periodError"), "");
+    $("stSource").textContent =
+      (station.owner === "DMI"
+        ? "Kilde til målingerne: DMI."
+        : `Kilde til målingerne: DMI og ${station.owner}, som ejer stationen.`) +
+      " Kilde til prognosen: DMI's stormflodsmodel DKSS.";
+
+    renderLatest();
     window.scrollTo(0, 0);
+
+    refreshLatest();
+    state.liveTimer = setInterval(() => {
+      if (!document.hidden) refreshLatest();
+    }, LIVE_EVERY);
+    runPeriod({ excel: false });
+  }
+
+  // ---------- Seneste måling og vandstandsbræt ----------
+
+  async function refreshLatest() {
+    const station = state.station;
+    if (!station) return;
+    if (state.liveJob) state.liveJob.abort();
+    const job = (state.liveJob = new AbortController());
+
+    try {
+      const latest = await fetchLatest(station, job.signal);
+      let ref = null;
+      if (latest) {
+        try {
+          ref = await fetchReference(station, latest.t - HOUR, job.signal);
+        } catch (err) {
+          ref = null;
+        }
+      }
+      if (job.signal.aborted || state.station !== station) return;
+      state.latest = latest;
+      state.latestRef = ref;
+      state.latestAt = Date.now();
+      state.latestError = !latest;
+      markFetched();
+    } catch (err) {
+      if (job.signal.aborted || state.station !== station) return;
+      state.latestError = true;
+    }
+    renderLatest();
+  }
+
+  function renderLatest() {
+    const latest = state.latest;
+    const trend = $("nowTrend");
+    const time = $("nowTime");
+    time.classList.remove("is-stale");
+    trend.textContent = "";
+
+    if (!latest) {
+      $("nowValue").textContent = state.latestError ? "–" : "…";
+      $("nowUnit").textContent = "";
+      time.textContent = state.latestError
+        ? "DMI svarer ikke lige nu. Prøv igen om lidt."
+        : "Henter seneste måling fra DMI …";
+      renderGauge();
+      return;
+    }
+
+    $("nowValue").textContent = fmtLevel(latest.v);
+    $("nowUnit").textContent = "cm DVR90";
+
+    if (Date.now() - latest.t > STALE_AFTER) {
+      time.textContent = `Ingen ny måling siden ${fmtDateTime(latest.t)}`;
+      time.classList.add("is-stale");
+    } else {
+      time.textContent = `Målt ${fmtDateTime(latest.t)}`;
+      const ref = state.latestRef;
+      if (ref && ref.t < latest.t) {
+        const diff = round1(latest.v - ref.v);
+        const minutes = Math.round((latest.t - ref.t) / MIN);
+        const word = Math.abs(diff) < 2 ? "Stabil" : diff > 0 ? "Stigende" : "Faldende";
+        trend.textContent = `${word}, ${fmtLevel(diff)} cm på ${minutes} minutter`;
+      } else {
+        trend.textContent = "Tendensen kan ikke beregnes, fordi målingen 60 minutter før mangler.";
+      }
+    }
+    renderGauge();
+  }
+
+  // Vandstandsbrættet: en lodret skala som på en havnekaj. Streger for hver 10 cm, tal for hver 50 cm,
+  // vandsøjle op til seneste måling, nullinje og rød markering ved grænseværdien.
+  function renderGauge() {
+    const box = $("gauge");
+    const value = state.latest ? state.latest.v : null;
+    const limit = state.limit;
+    const small = smallScreen.matches;
+
+    const H = small ? 96 : 240; // skalaens højde i px
+    const boardW = small ? 24 : 40;
+    const font = small ? 11 : 13;
+    const pad = 8;
+    const left = 8; // plads til grænsemarkeringen
+    const labelX = left + boardW + 10;
+    const W = labelX + (small ? 52 : 86);
+
+    // Skalaen dækker mindst −100 til +150 cm og udvides i trin på 50 cm.
+    let lo = -100;
+    let hi = 150;
+    for (const x of [value, limit]) {
+      if (x === null || !Number.isFinite(x)) continue;
+      while (x > hi - 10) hi += 50;
+      while (x < lo + 10) lo -= 50;
+    }
+    const pxPerCm = H / (hi - lo);
+    const y = (cm) => pad + (hi - cm) * pxPerCm;
+    const snap = (px) => Math.round(px) + 0.5;
+    const labelStep = 50 * pxPerCm >= font + 3 ? 50 : 100 * pxPerCm >= font + 3 ? 100 : 200;
+    const tickStep = 10 * pxPerCm >= 3 ? 10 : 50;
+
+    const INK = "#0F2D40";
+    const SEA = "#0B6FA4";
+    const MUTED = "#55687A";
+    const RED = "#C8341F";
+    const parts = [];
+
+    parts.push(`<rect x="${left}" y="${pad}" width="${boardW}" height="${H}" fill="#FFFFFF"/>`);
+    if (value !== null) {
+      const top = Math.max(pad, Math.min(pad + H, y(value)));
+      parts.push(`<rect x="${left}" y="${top}" width="${boardW}" height="${pad + H - top}" fill="${SEA}"/>`);
+    }
+
+    for (let cm = lo + tickStep; cm < hi; cm += tickStep) {
+      if (cm === 0) continue;
+      const long = cm % 50 === 0;
+      const wet = value !== null && cm <= value;
+      const len = Math.round(boardW * (long ? 0.6 : 0.3));
+      parts.push(
+        `<line x1="${left}" x2="${left + len}" y1="${snap(y(cm))}" y2="${snap(y(cm))}" stroke="${wet ? "#FFFFFF" : INK}" stroke-width="1"/>`
+      );
+    }
+    for (let cm = Math.ceil(lo / labelStep) * labelStep; cm <= hi; cm += labelStep) {
+      if (cm === 0) continue;
+      parts.push(
+        `<text x="${labelX}" y="${y(cm) + font * 0.35}" font-size="${font}" fill="${MUTED}">${fmtLevel(cm)}</text>`
+      );
+    }
+
+    // Nullinjen
+    const y0 = Math.round(y(0));
+    const wetZero = value !== null && value >= 0;
+    parts.push(`<rect x="${left}" y="${y0 - 1}" width="${boardW}" height="2" fill="${wetZero ? "#FFFFFF" : INK}"/>`);
+    parts.push(`<rect x="${left + boardW}" y="${y0 - 1}" width="6" height="2" fill="${INK}"/>`);
+    parts.push(
+      `<text x="${labelX}" y="${y0 + font * 0.35}" font-size="${font}" font-weight="600" fill="${INK}">0 DVR90</text>`
+    );
+
+    parts.push(
+      `<rect x="${left + 0.5}" y="${pad + 0.5}" width="${boardW - 1}" height="${H - 1}" fill="none" stroke="${INK}" stroke-width="1"/>`
+    );
+
+    // Grænseværdien
+    let limitLabel = "";
+    if (limit !== null && Number.isFinite(limit)) {
+      const yl = Math.round(y(limit));
+      parts.push(`<rect x="0" y="${yl - 1}" width="${left + boardW + 6}" height="2" fill="${RED}"/>`);
+      const nearest = Math.round(limit / labelStep) * labelStep;
+      if (!small && Math.abs(limit - nearest) * pxPerCm >= font + 2) {
+        parts.push(
+          `<text x="${labelX}" y="${yl + font * 0.35}" font-size="${font}" font-weight="600" fill="${RED}">Grænse ${fmtLevel(limit)}</text>`
+        );
+      }
+      limitLabel = ` Grænseværdi ${fmtLevel(limit)} cm.`;
+    }
+
+    const label =
+      (value === null ? "Vandstandsbræt uden måling." : `Vandstandsbræt. Seneste måling ${fmtLevel(value)} cm DVR90.`) +
+      limitLabel;
+    box.innerHTML =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H + 2 * pad}" viewBox="0 0 ${W} ${H + 2 * pad}" ` +
+      `role="img" aria-label="${label}" shape-rendering="crispEdges">${parts.join("")}</svg>`;
+  }
+
+  // ---------- Periode ----------
+
+  function readPeriodFields() {
+    const station = state.station;
+    const today = todayDk();
+    const from = stationFrom(station);
+    const fra = parseDkDate($("fra").value);
+    const til = parseDkDate($("til").value);
+
+    if (!fra || !til) return { error: `Skriv datoerne som dd.mm.åååå, for eksempel ${fmtDateParts(today)}.` };
+    if (compareDates(til, today) > 0) return { error: `Til kan højst være i dag, ${fmtDateParts(today)}.` };
+    if (compareDates(fra, til) > 0) return { error: "Fra skal være samme dag som Til eller tidligere." };
+    if (from && compareDates(fra, from) < 0) {
+      return { error: `Stationen har data fra ${fmtDateParts(from)}. Vælg en Fra-dato, der ikke ligger før.` };
+    }
+    const limit = parseLimit($("graense").value);
+    if (Number.isNaN(limit)) return { error: "Grænseværdien skal være et tal i cm, for eksempel 120." };
+    return { fra, til, limit };
+  }
+
+  function setShortcut(range) {
+    const station = state.station;
+    const til = todayDk();
+    const from = stationFrom(station);
+    let fra;
+    if (range === "7d") fra = addDays(til, -7);
+    else if (range === "30d") fra = addDays(til, -30);
+    else if (range === "1y") fra = validDate(til.y - 1, til.m, til.d) || addDays({ y: til.y - 1, m: til.m, d: 1 }, til.d - 2);
+    else fra = from || addDays(til, -7);
+    if (from && compareDates(fra, from) < 0) fra = from;
+
+    $("fra").value = fmtDateParts(fra);
+    $("til").value = fmtDateParts(til);
+    runPeriod({ excel: false });
+  }
+
+  function showProgress(p) {
+    const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
+    $("progressText").textContent = `Henter ${p.year}, ${pct} %`;
+    $("progressFill").style.width = pct + "%";
+  }
+
+  function setStatus(text) {
+    const node = $("dataStatus");
+    node.textContent = text || "";
+    node.hidden = !text;
+  }
+
+  // Henter perioden i Fra og Til fra DMI og viser den. Et nyt kald afbryder det gamle.
+  async function runPeriod(opts) {
+    const station = state.station;
+    if (!station) return;
+
+    const input = readPeriodFields();
+    if (input.error) {
+      showError($("periodError"), input.error);
+      return;
+    }
+    showError($("periodError"), "");
+    setStatus("");
+    $("excelParts").hidden = true;
+
+    state.limit = input.limit;
+    history.replaceState(null, "", stationHash(station.id, input));
+    renderSensors(input);
+    renderGauge();
+
+    if (state.job) state.job.abort();
+    const job = (state.job = new AbortController());
+    const now = Date.now();
+    const period = periodOf(input.fra, input.til, now);
+
+    $("progressFill").style.width = "0%";
+    $("progressText").textContent = `Henter ${dkParts(period.start).y}, 0 %`;
+    clearTimeout(state.progressTimer);
+    state.progressTimer = setTimeout(() => {
+      if (state.job === job && !job.signal.aborted) $("progress").hidden = false;
+    }, 300);
+
+    try {
+      const result = await fetchRange(station, period.start, period.apiEnd, {
+        signal: job.signal,
+        onProgress: (p) => {
+          if (state.job === job) showProgress(p);
+        },
+      });
+      if (job.signal.aborted || state.station !== station) return;
+      markFetched();
+
+      const ds = build15(result.series, period.start, period.end, Math.min(period.end, now - GAP_GRACE));
+      state.view = { station, period, ds, failed: result.failed, fetchedAt: now };
+      renderView();
+    } catch (err) {
+      if (state.station !== station) return;
+      if (job.signal.aborted) {
+        if (job.stoppedByUser) {
+          setStatus(
+            state.view ? "Hentningen blev stoppet. Siden viser stadig den forrige periode." : "Hentningen blev stoppet."
+          );
+        }
+        return;
+      }
+      showError($("periodError"), "DMI svarer ikke lige nu. Prøv igen om lidt.");
+    } finally {
+      if (state.job === job) {
+        clearTimeout(state.progressTimer);
+        $("progress").hidden = true;
+        state.job = null;
+      }
+    }
+  }
+
+  function stopJob() {
+    if (!state.job) return;
+    state.job.stoppedByUser = true;
+    state.job.abort();
+  }
+
+  // ---------- Visning af perioden ----------
+
+  // Sammenhængende perioder, der ikke kunne hentes
+  function failedRanges(failed) {
+    const ranges = [];
+    for (const c of failed) {
+      const last = ranges[ranges.length - 1];
+      if (last && c.start - last.end <= 1000) last.end = c.end;
+      else ranges.push({ start: c.start, end: c.end });
+    }
+    return ranges.map((r) => `${fmtDate(r.start)} til ${fmtDate(r.end)}`);
+  }
+
+  function renderView() {
+    const view = state.view;
+    if (!view) return;
+    const { station, ds, failed } = view;
+    const stats = seriesStats(ds);
+
+    $("noteMissing").textContent = failed.length
+      ? `DMI svarede ikke for ${failedRanges(failed).join(", ")}. Den periode mangler i graf, tabel og Excel-fil. Tryk "Vis" for at prøve igen.`
+      : "";
+
+    if (!stats) {
+      const from = stationFrom(station);
+      showError(
+        $("periodError"),
+        "Ingen målinger i perioden." + (from ? ` Stationen har data fra ${fmtDateParts(from)}.` : "")
+      );
+      $("chartBlock").hidden = true;
+      $("tableBlock").hidden = true;
+      $("noteSummary").textContent = "";
+      $("noteGaps").textContent = "";
+      $("notes").hidden = !failed.length;
+      return;
+    }
+
+    view.summary =
+      `Seneste værdi er ${fmtLevel(stats.last.v)} cm den ${fmtDateTime(stats.last.t)}, ` +
+      `højeste i perioden er ${fmtLevel(stats.max.v)} cm den ${fmtDateTime(stats.max.t)}, ` +
+      `og laveste er ${fmtLevel(stats.min.v)} cm den ${fmtDateTime(stats.min.t)}.`;
+    $("noteSummary").textContent = view.summary;
+    $("noteGaps").textContent =
+      ds.gaps === 0
+        ? ""
+        : ds.gaps === 1
+          ? "1 kvarter uden måling i perioden."
+          : `${fmtCount(ds.gaps)} kvarterer uden måling i perioden.`;
+    $("notes").hidden = false;
+
+    renderTable(ds);
+  }
+
+  function renderTable(ds) {
+    const body = $("tableBody");
+    body.textContent = "";
+    const firstRow = Math.max(0, ds.n - 50);
+    for (let i = ds.n - 1; i >= firstRow; i--) {
+      const row = el("tr");
+      row.append(
+        el("td", "", fmtDateTime(ds.t[i])),
+        el("td", "num", fmtLevel(ds.v[i])),
+        el("td", "", TYPE_NAMES[ds.type[i]]),
+        el("td", "", QC_NAMES[ds.q[i]])
+      );
+      body.append(row);
+    }
+    $("tableBlock").hidden = false;
   }
 
   // ---------- Start ----------
@@ -548,6 +1289,43 @@
       const target = "#postnr=" + encodeURIComponent(postnr);
       if (location.hash === target) route();
       else location.hash = target;
+    });
+
+    $("periodForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      runPeriod({ excel: false });
+    });
+    $("stopBtn").addEventListener("click", stopJob);
+    $("shortcuts").addEventListener("click", (event) => {
+      const range = event.target && event.target.getAttribute && event.target.getAttribute("data-range");
+      if (range) setShortcut(range);
+    });
+
+    // Grænseværdien kan ændres uden at hente data igen
+    $("graense").addEventListener("change", () => {
+      if (!state.station) return;
+      const limit = parseLimit($("graense").value);
+      if (Number.isNaN(limit)) {
+        showError($("periodError"), "Grænseværdien skal være et tal i cm, for eksempel 120.");
+        return;
+      }
+      showError($("periodError"), "");
+      state.limit = limit;
+      const input = readPeriodFields();
+      if (!input.error) {
+        history.replaceState(null, "", stationHash(state.station.id, input));
+        renderSensors(input);
+      }
+      renderGauge();
+      renderView();
+    });
+
+    // Seneste måling opdateres hvert 5. minut, mens fanen er synlig
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && state.station && Date.now() - (state.latestAt || 0) >= LIVE_EVERY) refreshLatest();
+    });
+    smallScreen.addEventListener("change", () => {
+      if (state.station) renderGauge();
     });
 
     loadLists()

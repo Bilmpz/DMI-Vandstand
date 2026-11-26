@@ -757,3 +757,10 @@ footer p + p {
     padding: 8px 12px;
   }
 }
+
+@media (max-width: 760px) {
+  .shortcuts span {
+    flex-basis: 100%;
+    margin-top: 8px;
+  }
+}
