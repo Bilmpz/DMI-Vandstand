@@ -1,0 +1,12 @@
+{
+  "beskrivelse": "Havne uden egen måler. Koordinaten er havnens punkt i OpenStreetMap (leisure=marina), tjekket 26.11.2026. Tilføj en havn med id, navn, lat, lon og osm. Programmet i DmiVandstand finder et prognosepunkt til hver havn.",
+  "havne": [
+    { "id": "havn-snekkersten", "name": "Snekkersten Havn", "lat": 56.0079, "lon": 12.5889, "osm": "node/3567550915" },
+    { "id": "havn-espergaerde", "name": "Espergærde Havn", "lat": 55.9924, "lon": 12.5624, "osm": "node/1201650037" },
+    { "id": "havn-helsingoer-nordhavn", "name": "Helsingør Nordhavn", "lat": 56.043, "lon": 12.6154, "osm": "node/2250220525" },
+    { "id": "havn-humlebaek", "name": "Humlebæk Havn", "lat": 55.971, "lon": 12.5462, "osm": "node/1201650054" },
+    { "id": "havn-nivaa", "name": "Nivå Havn", "lat": 55.9398, "lon": 12.5281, "osm": "node/1144196977" },
+    { "id": "havn-rungsted", "name": "Rungsted Havn", "lat": 55.8847, "lon": 12.5468, "osm": "way/912267193" },
+    { "id": "havn-gilleleje", "name": "Gilleleje Havn", "lat": 56.1275, "lon": 12.3117, "osm": "way/916133338" }
+  ]
+}
