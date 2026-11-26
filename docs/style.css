@@ -1,4 +1,4 @@
-/* DMI Vandstand v2.1
+/* DMI Vandstand v3.0
    Farverne har hver én betydning: blå er målt, magenta er prognose, rød er grænse. */
 
 @font-face {
@@ -614,6 +614,15 @@ input[type="text"]::placeholder {
 
 .key-limit {
   border-top: 2px solid var(--graense);
+}
+
+/* Beregnet, ikke målt: tidevand prikket i dæmpet farve, Open-Meteo prikket i magenta */
+.key-tide {
+  border-top: 2px dotted var(--daempet);
+}
+
+.key-model {
+  border-top: 2px dotted var(--magenta);
 }
 
 .chart-box {

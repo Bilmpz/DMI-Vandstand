@@ -60,7 +60,7 @@
         <div class="now" id="nowBlock" hidden>
           <div class="gauge" id="gauge"></div>
           <div class="now-text">
-            <h2>Seneste måling</h2>
+            <h2 id="nowTitle">Seneste måling</h2>
             <p class="now-line now-series" id="nowSeries"></p>
             <p class="now-value"><span id="nowValue"></span><span class="now-unit" id="nowUnit"></span></p>
             <p class="now-line" id="nowTime"></p>
@@ -94,6 +94,25 @@
           </p>
         </section>
 
+        <section class="series" id="nearBlock" hidden aria-labelledby="nearTitle">
+          <h2 id="nearTitle">Nærmeste målinger</h2>
+          <p class="series-note">Havnen har ingen måler. Prognosen er beregnet af DMI. Vælg en måling ved en nabohavn for at lægge den på grafen. Siden laver ikke sit eget skøn for havnen ud fra naboerne.</p>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Nærmeste målinger">
+            <table class="series-table">
+              <thead>
+                <tr>
+                  <th scope="col">Graf</th>
+                  <th scope="col">Målested</th>
+                  <th scope="col" class="num">Afstand</th>
+                  <th scope="col">Seneste måling</th>
+                  <th scope="col">Nulpunkt</th>
+                </tr>
+              </thead>
+              <tbody id="nearBody"></tbody>
+            </table>
+          </div>
+        </section>
+
         <form id="periodForm" class="controls" novalidate hidden>
           <div class="field">
             <label for="fra">Fra</label>
@@ -107,7 +126,7 @@
             <label for="graense">Grænseværdi (valgfri)</label>
             <input id="graense" name="graense" type="text" inputmode="text" autocomplete="off" maxlength="7">
           </div>
-          <div class="field field-res">
+          <div class="field field-res" id="resField">
             <label for="oplosning">Opløsning i Excel</label>
             <select id="oplosning" name="oplosning">
               <option value="15">15 minutter</option>
@@ -152,6 +171,7 @@
           <p id="noteForecastLimit"></p>
           <p id="noteOverlap"></p>
           <p id="noteForecast"></p>
+          <p id="noteSource"></p>
           <p class="msg-error" id="noteMissing" role="alert"></p>
         </div>
 
@@ -180,9 +200,10 @@
 
   <footer>
     <div class="wrap">
-      <p>Kilde: DMI. Målingerne kommer fra DMI, Kystdirektoratet og havne/kommuner via DMI's Frie Data under licensen <a href="https://creativecommons.org/licenses/by/4.0/legalcode.da" rel="noopener">CC BY 4.0</a>. Værdier mærket "beregnet" er baseret på data fra DMI og efterfølgende bearbejdet. Prognosen kommer fra DMI's stormflodsmodel DKSS. Postnumre kommer fra <a href="https://www.geonames.org/" rel="noopener">GeoNames</a> (CC BY 4.0).</p>
+      <p>Kilde: DMI. Danske målinger kommer fra DMI, Kystdirektoratet og havne/kommuner via DMI's Frie Data under licensen <a href="https://creativecommons.org/licenses/by/4.0/legalcode.da" rel="noopener">CC BY 4.0</a>. Det gør også DMI's tidevand og prognosen fra stormflodsmodellen DKSS. Værdier mærket "beregnet" er baseret på data fra DMI og efterfølgende bearbejdet.</p>
+      <p>Svenske målinger: SMHI er kilden (<a href="https://www.smhi.se/data/om-smhis-data/villkor-for-anvandning" rel="noopener">CC BY 4.0</a>). Værdierne er bearbejdet til 15 minutter. Tyske målinger: Wasserstraßen- und Schifffahrtsverwaltung des Bundes (WSV), PEGELONLINE (<a href="https://www.pegelonline.wsv.de/gast/nutzungsbedingungen" rel="noopener">DL-DE Zero 2.0</a>). Modeldata fra <a href="https://open-meteo.com/" rel="noopener">Open-Meteo.com</a> (CC BY 4.0), baseret på E.U. Copernicus Marine Service Information. Havnenes placering: © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a>-bidragydere (ODbL). Postnumre kommer fra <a href="https://www.geonames.org/" rel="noopener">GeoNames</a> (CC BY 4.0).</p>
       <p id="fetchedLine"></p>
-      <p class="foot-row"><span>DMI Vandstand v2.1</span><span>Made by Oliver Lobel</span></p>
+      <p class="foot-row"><span>DMI Vandstand v3.0</span><span>Made by Oliver Lobel</span></p>
     </div>
   </footer>
 

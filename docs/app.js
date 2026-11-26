@@ -1,10 +1,18 @@
-/* DMI Vandstand v2.1. Ingen byggeværktøjer og ingen frameworks. */
+/* DMI Vandstand v3.0. Ingen byggeværktøjer og ingen frameworks. */
 (function (root) {
   "use strict";
 
   const STATIONS_URL = "data/stations.json";
   const POSTNR_URL = "data/postnumre.json";
   const OBS_URL = "https://opendataapi.dmi.dk/v2/oceanObs/collections/observation/items";
+  const TIDE_URL = "https://opendataapi.dmi.dk/v2/oceanObs/collections/tidewater/items";
+  const SMHI_URL = "https://opendata-download-ocobs.smhi.se/api/version/latest/parameter";
+  const SMHI_ARCHIVE_URL = "https://opendata-download-ocobs.smhi.se/api/version/1.0/parameter";
+  const PEGEL_URL = "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations";
+  const OPENMETEO_URL = "https://marine-api.open-meteo.com/v1/marine";
+  const TIDE_FROM = "2026-01-01"; // DMI's tidevand findes fra 2026 (målt 26.11.2026)
+  const OPENMETEO_FROM = "2022-10-01"; // Open-Meteo marine har vandstand tilbage til ca. efteråret 2022
+  const PEGEL_DAYS = 30; // PEGELONLINE har kun ca. 30 dage tilbage
 
   const MIN = 60000;
   const MIN15 = 15 * MIN;
@@ -192,18 +200,39 @@
     return 2 * R * Math.asin(Math.sqrt(a));
   }
 
-  // ---------- Måleserier: parameter, nulpunkt og enhed ----------
+  // ---------- Måleserier: kilde, parameter, nulpunkt og enhed ----------
 
   const STATUS_ACTIVE = "aktiv";
   const OWNER_KYST = "Kystdirektoratet";
-  const OWNER_ORDER = ["DMI", "Kystdirektoratet", "Havn/kommune", "Ikke oplyst"];
+  const OWNER_ORDER = ["DMI", "Kystdirektoratet", "Havn/kommune", "Ikke oplyst", "SMHI", "Sjöfartsverket", "WSV"];
   const PLACE_KM = 3; // stationer med samme navn under 3 km fra hinanden er ét sted
+  const COUNTRY_NAMES = { DK: "Danmark", SE: "Sverige", DE: "Tyskland" };
+
+  // Kilderne. Målinger: DMI, SMHI og PEGELONLINE. Beregnet: DMI's tidevand, DMI's prognose (DKSS) og Open-Meteo.
+  const SRC_DMI = "DMI";
+  const SRC_SMHI = "SMHI";
+  const SRC_PEGEL = "PEGELONLINE";
+  const SRC_KYST = "Kystatlas";
+  const SRC_TIDE = "DMI tidevand";
+  const SRC_DKSS = "DMI prognose";
+  const SRC_OPENMETEO = "Open-Meteo";
+
+  const KIND_MEASURED = "målt";
+  const KIND_TIDE = "tidevand";
+  const KIND_MODEL = "model";
+  const KIND_FORECAST = "prognose";
+
+  const DATUM_TIDE = "nulpunkt ikke oplyst af DMI";
 
   // Nulpunktet for én måleserie (station × parameter)
-  function datumOf(owner, parameter) {
+  function datumOf(station, parameter) {
+    const source = station.source || SRC_DMI;
+    if (source === SRC_SMHI) return parameter === "smhi_mw" ? "middelvandstand (SMHI)" : "RH2000";
+    if (source === SRC_PEGEL) return typeof station.gaugeZeroNhn === "number" ? "NHN (omregnet fra pegelnul)" : "pegelnul";
+    if (source === SRC_KYST) return "DVR90";
     if (parameter === "sealev_dvr") return "DVR90";
     if (parameter === "sealev_ln") return "lokalt nulpunkt";
-    if (parameter === "sea_reg") return owner === OWNER_KYST ? "DVR90 ifølge DMI" : "nulpunkt ikke dokumenteret";
+    if (parameter === "sea_reg") return station.owner === OWNER_KYST ? "DVR90 ifølge DMI" : "nulpunkt ikke dokumenteret";
     if (parameter === "tw") return "°C, vandtemperatur";
     return "ikke dokumenteret";
   }
@@ -221,15 +250,37 @@
     return isTemperature(series) ? "°C" : "cm";
   }
 
-  // Enhed med nulpunkt. Kun serier, der er i DVR90, får "DVR90".
+  // Enhed med nulpunkt. Kun serier, der er i DVR90, får "DVR90". Svenske tal er i RH 2000, tyske i NHN eller over pegelnul.
   function unitLabel(series) {
     if (isTemperature(series)) return "°C";
     if (isDvr90(series)) return "cm DVR90";
+    if (series.datum === "RH2000") return "cm RH2000";
+    if (series.datum === "pegelnul") return "cm over pegelnul";
+    if (series.datum === "NHN (omregnet fra pegelnul)") return "cm NHN (omregnet fra pegelnul)";
     return "cm, " + series.datum;
   }
 
+  // Kort nulpunkt til vandstandsbrættets nullinje
+  function zeroLabel(series) {
+    if (isDvr90(series)) return "0 DVR90";
+    if (series.datum === "RH2000") return "0 RH2000";
+    if (series.datum === "NHN (omregnet fra pegelnul)") return "0 NHN";
+    return "0";
+  }
+
   function seriesName(series) {
-    return `${series.id} ${series.parameter}`;
+    return series.label || `${series.id} ${series.parameter}`;
+  }
+
+  // Parameteren, som den står i tabellen "Måleserier"
+  function paramLabel(series) {
+    if (series.source === SRC_SMHI) return series.parameter === "smhi_mw" ? "Havsvattenstånd, RW" : "Havsvattenstånd";
+    if (series.source === SRC_PEGEL) return "W (Wasserstand)";
+    if (series.source === SRC_KYST) return "Vandstand (Kystatlas)";
+    if (series.kind === KIND_TIDE) return "Tidevand (beregnet af DMI)";
+    if (series.kind === KIND_MODEL) return "Open-Meteo (global model, grov)";
+    if (series.kind === KIND_FORECAST) return "Prognose (DMI's model DKSS)";
+    return series.parameter;
   }
 
   // Vandstand med fortegn (+22, −5). Temperatur uden plus.
@@ -237,6 +288,10 @@
     if (!isTemperature(series)) return fmtLevel(v);
     const r = round1(v);
     return (r < 0 ? MINUS : "") + fmtNum(r);
+  }
+
+  function isMeasured(series) {
+    return !series.kind || series.kind === KIND_MEASURED;
   }
 
   // ---------- Steder ----------
@@ -272,14 +327,23 @@
     );
   }
 
+  function seriesLabel(station, parameter) {
+    if (station.source === SRC_SMHI) return `${station.id} ${parameter === "smhi_mw" ? "RW" : "RH2000"}`;
+    return `${station.id} ${parameter}`;
+  }
+
   // Én måleserie pr. parameter. Serien har stationens felter med, så den kan bruges som en station.
   function seriesOf(station) {
     return (station.parameters || []).map((parameter) => ({
       key: station.id + ":" + parameter,
       id: station.id,
       parameter,
+      label: seriesLabel(station, parameter),
       station,
-      datum: datumOf(station.owner, parameter),
+      source: station.source || SRC_DMI,
+      country: station.country || "DK",
+      kind: KIND_MEASURED,
+      datum: datumOf(station, parameter),
       active: station.status === STATUS_ACTIVE,
       name: station.name,
       owner: station.owner,
@@ -291,9 +355,59 @@
     }));
   }
 
-  // Hovedserien: sealev_dvr, sea_reg fra Kystdirektoratet, sea_reg fra andre, sealev_ln
+  // Tidevand beregnet af DMI for et tidevandssted
+  function tideSeries(tide) {
+    return {
+      key: "tide:" + tide.stationId,
+      id: tide.stationId,
+      parameter: "tidevand",
+      label: `${tide.stationId} tidevand`,
+      station: tide,
+      source: SRC_TIDE,
+      country: "DK",
+      kind: KIND_TIDE,
+      datum: DATUM_TIDE,
+      active: true,
+      name: tide.name,
+      owner: "DMI",
+      lat: tide.lat,
+      lon: tide.lon,
+      from: TIDE_FROM,
+      to: null,
+      forecast: null,
+    };
+  }
+
+  // Open-Meteo i et punkt. Valgfri og ikke valgt fra start.
+  function modelSeries(key, name, lat, lon) {
+    return {
+      key: "openmeteo:" + key,
+      id: "Open-Meteo",
+      parameter: "sea_level_height_msl",
+      label: "Open-Meteo",
+      station: { id: "Open-Meteo", name, lat, lon },
+      source: SRC_OPENMETEO,
+      country: "",
+      kind: KIND_MODEL,
+      datum: "middelvandstand",
+      active: true,
+      name,
+      owner: "Open-Meteo",
+      lat,
+      lon,
+      from: OPENMETEO_FROM,
+      to: null,
+      forecast: null,
+    };
+  }
+
+  // Hovedserien: DMI sealev_dvr, sea_reg fra Kystdirektoratet, sea_reg fra andre, sealev_ln.
+  // Svenske steder: RH 2000-serien. Tyske steder: W.
   function mainRank(series) {
+    if (series.source === SRC_SMHI) return series.parameter === "smhi_rh2000" ? 0 : 1;
+    if (series.source === SRC_PEGEL) return 0;
     if (series.parameter === "sealev_dvr") return 0;
+    if (series.source === SRC_KYST) return 1;
     if (series.parameter === "sea_reg") return series.owner === OWNER_KYST ? 1 : 2;
     if (series.parameter === "sealev_ln") return 3;
     return 4;
@@ -326,7 +440,10 @@
     }
     const anchor = main ? main.station : stations[0];
     return {
+      kind: "sted",
       name: baseName(anchor.name),
+      country: anchor.country || "DK",
+      sources: Array.from(new Set(stations.map((s) => s.source || SRC_DMI))),
       stations,
       series,
       main,
@@ -339,9 +456,10 @@
     };
   }
 
-  // Et sted er alle stationer med samme navn og under 3 km fra hinanden, på tværs af ejer og status.
-  // Navnene sammenlignes uden store/små bogstaver og uden " I", " II", " III" og " (Old)" til sidst.
-  function buildPlaces(stations) {
+  // Et sted er alle stationer med samme navn og under 3 km fra hinanden, på tværs af ejer og status,
+  // men aldrig på tværs af lande. Navnene sammenlignes uden store/små bogstaver og uden " I", " II", " III"
+  // og " (Old)" til sidst.
+  function buildPlaces(stations, tides) {
     const n = stations.length;
     const parent = Array.from({ length: n }, (_, i) => i);
     const find = (i) => {
@@ -352,11 +470,13 @@
       return i;
     };
     const keys = stations.map((s) => placeKey(s.name));
+    const country = (s) => s.country || "DK";
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         if (keys[i] !== keys[j]) continue;
         const a = stations[i];
         const b = stations[j];
+        if (country(a) !== country(b)) continue;
         if (haversineKm(a.lat, a.lon, b.lat, b.lon) < PLACE_KM) parent[find(i)] = find(j);
       }
     }
@@ -366,20 +486,89 @@
       if (!groups.has(root)) groups.set(root, []);
       groups.get(root).push(s);
     });
-    return Array.from(groups.values(), makePlace);
+    const places = Array.from(groups.values(), makePlace);
+    attachTides(places, tides || []);
+    for (const place of places) {
+      if (place.active) place.series.push(modelSeries(place.name + "|" + place.lat + "|" + place.lon, place.name, place.lat, place.lon));
+    }
+    return places;
+  }
+
+  // Et tidevandssted knyttes til det nærmeste danske sted, når det ligger under 3 km fra en af stedets stationer.
+  function attachTides(places, tides) {
+    for (const tide of tides) {
+      let best = null;
+      let bestKm = PLACE_KM;
+      for (const place of places) {
+        if (place.country !== "DK") continue;
+        for (const s of place.stations) {
+          const km = haversineKm(tide.lat, tide.lon, s.lat, s.lon);
+          if (km < bestKm) {
+            bestKm = km;
+            best = place;
+          }
+        }
+      }
+      if (best) {
+        const series = tideSeries(tide);
+        series.distanceKm = bestKm;
+        best.series.push(series);
+        best.tide = best.tide || series;
+      }
+    }
+  }
+
+  // En havn uden måler: DMI's prognose i havnen og de nærmeste målinger ved siden af
+  function makeHarbour(h) {
+    const forecast = {
+      key: "dkss:" + h.id,
+      id: h.id,
+      parameter: "dkss",
+      label: `Prognose ${h.name}`,
+      station: h,
+      source: SRC_DKSS,
+      country: "DK",
+      kind: KIND_FORECAST,
+      datum: "middelvandstand",
+      active: true,
+      name: h.name,
+      owner: "DMI",
+      lat: h.lat,
+      lon: h.lon,
+      from: null,
+      to: null,
+      forecast: h.forecast || null,
+    };
+    return {
+      kind: "havn",
+      id: h.id,
+      name: h.name,
+      country: "DK",
+      sources: [SRC_DKSS],
+      harbour: h,
+      stations: [],
+      series: [forecast, modelSeries(h.id, h.name, h.lat, h.lon)],
+      main: forecast,
+      owners: ["Havn uden måler"],
+      active: true,
+      from: null,
+      to: null,
+      lat: h.lat,
+      lon: h.lon,
+    };
   }
 
   // De nærmeste steder. Uden withClosed kun steder med mindst én aktiv station.
-  function nearestPlaces(places, lat, lon, count, withClosed) {
+  function nearestPlaces(places, lat, lon, count, withClosed, filter) {
     return places
-      .filter((place) => withClosed || place.active)
+      .filter((place) => (withClosed || place.active) && (!filter || filter(place)))
       .map((place) => ({ place, km: haversineKm(lat, lon, place.lat, place.lon) }))
       .sort((a, b) => a.km - b.km)
       .slice(0, count);
   }
 
   // ====================================================================
-  // Kald til DMI
+  // Kald til kilderne. Højst 2 kald ad gangen til hver vært, og nyt forsøg ved 429 og 5xx.
   // ====================================================================
 
   class HttpError extends Error {
@@ -404,10 +593,99 @@
     });
   }
 
+  const HOST_LIMIT = 2;
+  const hostGates = new Map();
+
+  // En kø pr. vært. En ledig plads gives direkte videre til den næste i køen.
+  function gateFor(url) {
+    const m = /^https?:\/\/([^/]+)/.exec(url);
+    const host = m ? m[1] : "";
+    let gate = hostGates.get(host);
+    if (!gate) {
+      gate = { active: 0, queue: [] };
+      hostGates.set(host, gate);
+    }
+    return gate;
+  }
+
+  async function acquire(gate, signal) {
+    if (gate.active < HOST_LIMIT) {
+      gate.active++;
+      return;
+    }
+    await new Promise((resolve, reject) => {
+      const item = { resolve };
+      gate.queue.push(item);
+      if (signal) {
+        signal.addEventListener(
+          "abort",
+          () => {
+            const i = gate.queue.indexOf(item);
+            if (i >= 0) {
+              gate.queue.splice(i, 1);
+              reject(new DOMException("Afbrudt", "AbortError"));
+            }
+          },
+          { once: true }
+        );
+      }
+    });
+  }
+
+  function release(gate) {
+    const next = gate.queue.shift();
+    if (next) next.resolve();
+    else gate.active--;
+  }
+
+  // Svaret som JSON. Lokale filer (data/...) går ikke gennem køen.
   async function getJson(url, signal) {
-    const response = await fetch(url, { signal, cache: "no-store" });
-    if (!response.ok) throw new HttpError(response.status);
-    return response.json();
+    if (!/^https?:/.test(url)) {
+      const response = await fetch(url, { signal, cache: "no-store" });
+      if (!response.ok) throw new HttpError(response.status);
+      return response.json();
+    }
+    const gate = gateFor(url);
+    await acquire(gate, signal);
+    try {
+      const response = await fetch(url, { signal, cache: "no-store" });
+      if (!response.ok) throw new HttpError(response.status);
+      return await response.json();
+    } finally {
+      release(gate);
+    }
+  }
+
+  // Læser en tekstfil linje for linje uden at holde hele filen i hukommelsen. onLine giver false for at stoppe.
+  async function streamLines(url, signal, onLine, onBytes) {
+    const gate = gateFor(url);
+    await acquire(gate, signal);
+    try {
+      const response = await fetch(url, { signal });
+      if (!response.ok) throw new HttpError(response.status);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let rest = "";
+      let bytes = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.length;
+        if (onBytes) onBytes(bytes);
+        const text = rest + decoder.decode(value, { stream: true });
+        const lines = text.split("\n");
+        rest = lines.pop();
+        for (const line of lines) {
+          if (onLine(line) === false) {
+            await reader.cancel();
+            return;
+          }
+        }
+      }
+      if (rest) onLine(rest);
+    } finally {
+      release(gate);
+    }
   }
 
   // Prøv igen ved 429, 5xx og netværksfejl. pauses er ventetiden før hvert nyt forsøg.
@@ -444,7 +722,7 @@
   }
 
   // Den rå, nyeste måling fra DMI
-  async function fetchLatest(station, signal) {
+  async function fetchLatestDmi(station, signal) {
     const data = await getJsonRetry(obsUrl(station, "period=latest"), signal, [1000]);
     const p = data.features && data.features[0] && data.features[0].properties;
     if (!p || typeof p.value !== "number") return null;
@@ -567,7 +845,10 @@
   // så løkken stopper på en tom side eller en side, der er kortere end limit.
   async function fetchWindow(station, startMs, endMs, signal) {
     const range = encodeURIComponent(isoZ(startMs) + "/" + isoZ(endMs));
-    let url = obsUrl(station, `datetime=${range}&limit=${PAGE_LIMIT}`);
+    const tide = station.kind === KIND_TIDE;
+    let url = tide
+      ? `${TIDE_URL}?stationId=${encodeURIComponent(station.id)}&datetime=${range}&limit=${PAGE_LIMIT}`
+      : obsUrl(station, `datetime=${range}&limit=${PAGE_LIMIT}`);
     const t = [];
     const v = [];
     const q = [];
@@ -578,7 +859,9 @@
       for (const f of features) {
         const p = f.properties;
         if (!p || typeof p.value !== "number") continue;
-        const ms = Date.parse(p.observed);
+        // Tidevandet har også højvande og lavvande. Kurven bruger værdierne hvert 10. minut.
+        if (tide && p.predictionType !== "10minutes") continue;
+        const ms = Date.parse(tide ? p.predictionTime : p.observed);
         if (Number.isNaN(ms)) continue;
         t.push(ms);
         v.push(p.value);
@@ -656,7 +939,7 @@
     };
 
     let failed = [];
-    await pool(chunks, 3, async (chunk, i) => {
+    await pool(chunks, HOST_LIMIT, async (chunk, i) => {
       if (await load(chunk, i)) done++;
       else failed.push(i);
       report(chunk, false);
@@ -683,6 +966,335 @@
     }
 
     return { series: mergeSeries(parts), failed: failed.map((i) => chunks[i]) };
+  }
+
+  // ====================================================================
+  // Kilder. Hver kilde har en lille adapter med samme form:
+  //   latest(series, signal)              -> { latest: { t, v, q }, ref: { t, v } } eller null
+  //   range(series, startMs, endMs, opts) -> { series: pakkede målinger, failed: [{ start, end, year }], note }
+  // Resten af siden kender ikke forskel på kilderne.
+  // ====================================================================
+
+  // Den måling i points, der ligger tættest på target, inden for 15 minutter
+  function nearestPoint(t, v, target) {
+    let best = -1;
+    for (let i = 0; i < t.length; i++) {
+      if (Math.abs(t[i] - target) > 15 * MIN) continue;
+      if (best < 0 || Math.abs(t[i] - target) < Math.abs(t[best] - target)) best = i;
+    }
+    return best < 0 ? null : { t: t[best], v: v[best] };
+  }
+
+  // Seneste måling og målingen ca. 60 minutter før ud fra en pakket serie
+  function latestOf(packed) {
+    if (!packed.n) return null;
+    const i = packed.n - 1;
+    const latest = { t: packed.t[i], v: packed.v[i], q: QC_NAMES[packed.q[i]] || "" };
+    return { latest, ref: nearestPoint(packed.t, packed.v, latest.t - HOUR) };
+  }
+
+  function wholeRangeFailed(startMs, endMs) {
+    return [{ start: startMs, end: endMs, year: new Date(startMs).getUTCFullYear() }];
+  }
+
+  const ADAPTERS = {};
+
+  // ---------- DMI: målinger i kvartaler fra oceanObs ----------
+
+  ADAPTERS[SRC_DMI] = {
+    async latest(series, signal) {
+      const latest = await fetchLatestDmi(series, signal);
+      if (!latest) return null;
+      let ref = null;
+      try {
+        ref = await fetchReference(series, latest.t - HOUR, signal);
+      } catch (err) {
+        if (signal && signal.aborted) throw err;
+      }
+      return { latest, ref };
+    },
+    range: (series, startMs, endMs, opts) => fetchRange(series, startMs, endMs, opts),
+  };
+
+  // ---------- DMI's tidevand: beregnet hvert 10. minut ----------
+
+  ADAPTERS[SRC_TIDE] = {
+    latest: async () => null,
+    range: (series, startMs, endMs, opts) => fetchRange(series, startMs, endMs, opts),
+  };
+
+  // ---------- SMHI ----------
+  // Parameter 13 (minutværdier) og 6 (timeværdier) er i RH 2000. 14 og 12 ("RW") er i forhold til middelvandstand.
+  // Det seneste døgn hentes som JSON. Ældre minutværdier findes kun i arkivfilen (en CSV for hele perioden,
+  // fx 19 MB komprimeret for Helsingborg), som læses linje for linje og stoppes, når perioden er nået.
+  // Perioder, der slutter mere end 92 dage tilbage, hentes som timeværdier fra det mindre timearkiv.
+
+  const SMHI_PARAMS = { smhi_rh2000: { minute: 13, hour: 6 }, smhi_mw: { minute: 14, hour: 12 } };
+  const SMHI_MINUTE_DAYS = 92;
+  const smhiCache = [];
+
+  function smhiJsonUrl(series, period) {
+    const p = SMHI_PARAMS[series.parameter].minute;
+    return `${SMHI_URL}/${p}/station/${encodeURIComponent(series.station.sourceId)}/period/${period}/data.json`;
+  }
+
+  function smhiPack(data, startMs, endMs) {
+    const t = [];
+    const v = [];
+    const q = [];
+    for (const x of (data && data.value) || []) {
+      if (typeof x.value !== "number" || typeof x.date !== "number") continue;
+      if (x.date < startMs || x.date > endMs) continue;
+      t.push(x.date);
+      v.push(x.value);
+      q.push(qcCode(x.quality || ""));
+    }
+    return packSeries(t, v, q);
+  }
+
+  // Arkivfilen: "2026-11-25 23:57:00;16.8;G;0" i UTC, sorteret efter tid
+  async function smhiArchive(series, param, startMs, endMs, opts) {
+    const cached = smhiCache.find(
+      (c) => c.key === series.key + "|" + param && c.start <= startMs && c.end >= endMs && Date.now() - c.at < CACHE_FOR
+    );
+    if (cached) return buildRaw(cached.packed, startMs, endMs);
+
+    const url = `${SMHI_ARCHIVE_URL}/${param}/station/${encodeURIComponent(series.station.sourceId)}/period/corrected-archive/data.csv`;
+    const t = [];
+    const v = [];
+    const q = [];
+    const from = parseIsoDate(series.from);
+    const fileStart = from ? Date.UTC(from.y, from.m - 1, from.d) : startMs;
+    const span = Math.max(1, Math.min(endMs, Date.now()) - fileStart);
+    let lastReport = 0;
+    let year = new Date(fileStart).getUTCFullYear();
+    await streamLines(
+      url,
+      opts.signal,
+      (line) => {
+        const c = line.charCodeAt(0);
+        if (c < 48 || c > 57 || line.length < 21 || line[4] !== "-" || line[10] !== " ") return true;
+        const ms = Date.UTC(+line.slice(0, 4), +line.slice(5, 7) - 1, +line.slice(8, 10), +line.slice(11, 13), +line.slice(14, 16), +line.slice(17, 19));
+        if (ms > endMs) return false; // filen er sorteret: resten ligger efter perioden
+        year = +line.slice(0, 4);
+        if (ms < startMs) return true;
+        const a = line.indexOf(";", 19);
+        const b = line.indexOf(";", a + 1);
+        const value = parseFloat(line.slice(a + 1, b < 0 ? undefined : b));
+        if (Number.isNaN(value)) return true;
+        const e = b < 0 ? -1 : line.indexOf(";", b + 1);
+        t.push(ms);
+        v.push(value);
+        q.push(qcCode(b < 0 ? "" : line.slice(b + 1, e < 0 ? undefined : e).trim()));
+        return true;
+      },
+      () => {
+        const now = Date.now();
+        if (!opts.onProgress || now - lastReport < 250) return;
+        lastReport = now;
+        const done = Math.max(0, Math.min(1, (Date.UTC(year, 0, 1) - fileStart) / span));
+        opts.onProgress({ year, done: Math.round(done * 1000), total: 1000, waiting: false });
+      }
+    );
+    const packed = packSeries(t, v, q);
+    smhiCache.length = 0; // kun den seneste arkivlæsning gemmes
+    smhiCache.push({ key: series.key + "|" + param, start: startMs, end: endMs, at: Date.now(), packed });
+    return packed;
+  }
+
+  ADAPTERS[SRC_SMHI] = {
+    async latest(series, signal) {
+      const data = await getJsonRetry(smhiJsonUrl(series, "latest-day"), signal, [2000, 6000]);
+      return latestOf(smhiPack(data, 0, Infinity));
+    },
+    async range(series, startMs, endMs, opts) {
+      const now = Date.now();
+      const P = SMHI_PARAMS[series.parameter];
+      const parts = [];
+      let note = "";
+      try {
+        if (startMs >= now - 23 * HOUR) {
+          parts.push(smhiPack(await getJsonRetry(smhiJsonUrl(series, "latest-day"), opts.signal, [2000, 6000]), startMs, endMs));
+        } else if (!opts.raw && endMs < now - SMHI_MINUTE_DAYS * DAY) {
+          parts.push(await smhiArchive(series, P.hour, startMs, endMs, opts));
+          note = "SMHI: perioden er hentet som timeværdier fra SMHI's arkiv, så 15-minutters datasættet har kun hele timer.";
+        } else {
+          parts.push(await smhiArchive(series, P.minute, startMs, endMs, opts));
+          // Arkivet går til kl. 00 UTC i dag. Resten kommer fra det seneste døgn.
+          const midnight = Math.floor(now / DAY) * DAY;
+          if (endMs >= midnight - HOUR) {
+            parts.push(smhiPack(await getJsonRetry(smhiJsonUrl(series, "latest-day"), opts.signal, [2000, 6000]), startMs, endMs));
+          }
+          note = "SMHI: minutværdierne er læst fra SMHI's arkivfil for hele stationen. Den kan tage lidt tid at hente.";
+        }
+      } catch (err) {
+        if (opts.signal && opts.signal.aborted) throw err;
+        return { series: EMPTY_SERIES, failed: wholeRangeFailed(startMs, endMs), note: "" };
+      }
+      return { series: mergeSorted(parts), failed: [], note };
+    },
+  };
+
+  // Flere pakkede serier til én, sorteret og uden dubletter
+  function mergeSorted(parts) {
+    const t = [];
+    const v = [];
+    const q = [];
+    for (const p of parts) {
+      for (let i = 0; i < p.n; i++) {
+        t.push(p.t[i]);
+        v.push(p.v[i]);
+        q.push(p.q[i]);
+      }
+    }
+    return packSeries(t, v, q);
+  }
+
+  // ---------- PEGELONLINE: minutværdier for de seneste ca. 30 dage ----------
+
+  function pegelValue(series, v) {
+    const zero = series.station.gaugeZeroNhn;
+    return typeof zero === "number" ? round1(v + zero * 100) : v;
+  }
+
+  function pegelPack(series, data) {
+    const t = [];
+    const v = [];
+    const q = [];
+    for (const x of Array.isArray(data) ? data : []) {
+      if (typeof x.value !== "number") continue;
+      const ms = Date.parse(x.timestamp);
+      if (Number.isNaN(ms)) continue;
+      t.push(ms);
+      v.push(pegelValue(series, x.value));
+      q.push(0);
+    }
+    return packSeries(t, v, q);
+  }
+
+  function pegelUrl(series, query) {
+    return `${PEGEL_URL}/${encodeURIComponent(series.station.sourceId)}/W/measurements.json?${query}`;
+  }
+
+  ADAPTERS[SRC_PEGEL] = {
+    async latest(series, signal) {
+      return latestOf(pegelPack(series, await getJsonRetry(pegelUrl(series, "start=PT2H"), signal, [2000, 6000])));
+    },
+    async range(series, startMs, endMs, opts) {
+      const limit = Date.now() - PEGEL_DAYS * DAY;
+      const a = Math.max(startMs, limit);
+      const note =
+        startMs < limit ? "PEGELONLINE har kun målinger for de seneste 30 dage, så perioden før er tom." : "";
+      if (a > endMs) return { series: EMPTY_SERIES, failed: [], note };
+      try {
+        const data = await getJsonRetry(
+          pegelUrl(series, `start=${encodeURIComponent(isoZ(a))}&end=${encodeURIComponent(isoZ(endMs))}`),
+          opts.signal,
+          [3000, 8000]
+        );
+        return { series: pegelPack(series, data), failed: [], note };
+      } catch (err) {
+        if (opts.signal && opts.signal.aborted) throw err;
+        return { series: EMPTY_SERIES, failed: wholeRangeFailed(a, endMs), note };
+      }
+    },
+  };
+
+  // ---------- Kystatlas: de seneste 30 døgn, som workflowet har hentet (Kystatlas sender ingen CORS-header) ----------
+
+  const kystCache = new Map();
+
+  async function kystPacked(series, signal) {
+    const id = series.station.sourceId;
+    const hit = kystCache.get(id);
+    if (hit && Date.now() - hit.at < CACHE_FOR) return hit.packed;
+    const data = await getJsonRetry(`data/obs/kystatlas/${encodeURIComponent(id)}.json`, signal, [1000, 3000]);
+    const t = (data.t || []).map((sec) => sec * 1000);
+    const packed = packSeries(t, data.v || [], new Array(t.length).fill(0));
+    kystCache.set(id, { at: Date.now(), packed });
+    return packed;
+  }
+
+  const KYST_NOTE = "Kystatlas sender ikke den header, der lader browseren hente data direkte. Siden viser derfor kun de seneste 30 døgn, som hentes hver halve time.";
+
+  ADAPTERS[SRC_KYST] = {
+    async latest(series, signal) {
+      return latestOf(await kystPacked(series, signal));
+    },
+    async range(series, startMs, endMs, opts) {
+      try {
+        return { series: buildRaw(await kystPacked(series, opts.signal), startMs, endMs), failed: [], note: KYST_NOTE };
+      } catch (err) {
+        if (opts.signal && opts.signal.aborted) throw err;
+        return { series: EMPTY_SERIES, failed: wholeRangeFailed(startMs, endMs), note: KYST_NOTE };
+      }
+    },
+  };
+
+  // ---------- Open-Meteo: global model, timeværdier i meter over middelvandstand ----------
+
+  ADAPTERS[SRC_OPENMETEO] = {
+    latest: async () => null,
+    async range(series, startMs, endMs, opts) {
+      const d = (ms) => new Date(ms).toISOString().slice(0, 10);
+      const url =
+        `${OPENMETEO_URL}?latitude=${series.lat}&longitude=${series.lon}&hourly=sea_level_height_msl` +
+        `&timezone=GMT&start_date=${d(startMs)}&end_date=${d(endMs)}`;
+      try {
+        const data = await getJsonRetry(url, opts.signal, [3000, 8000]);
+        const time = (data.hourly && data.hourly.time) || [];
+        const values = (data.hourly && data.hourly.sea_level_height_msl) || [];
+        const t = [];
+        const v = [];
+        const q = [];
+        for (let i = 0; i < time.length; i++) {
+          if (typeof values[i] !== "number") continue;
+          const ms = Date.parse(time[i] + ":00Z");
+          if (Number.isNaN(ms) || ms < startMs || ms > endMs) continue;
+          t.push(ms);
+          v.push(round1(values[i] * 100));
+          q.push(0);
+        }
+        if (typeof data.latitude === "number") series.grid = { lat: data.latitude, lon: data.longitude };
+        const km = series.grid ? haversineKm(series.lat, series.lon, series.grid.lat, series.grid.lon) : null;
+        const note =
+          (t.length ? "" : "Open-Meteo har ingen værdier i punktet for perioden. ") +
+          (km !== null ? `Open-Meteo bruger gitterpunktet ${fmtKm(km)} herfra.` : "");
+        return { series: packSeries(t, v, q), failed: [], note };
+      } catch (err) {
+        if (opts.signal && opts.signal.aborted) throw err;
+        return { series: EMPTY_SERIES, failed: wholeRangeFailed(startMs, endMs), note: "" };
+      }
+    },
+  };
+
+  // ---------- DMI's prognose i en havn ----------
+
+  ADAPTERS[SRC_DKSS] = {
+    async latest(series, signal) {
+      if (!series.forecast) return null;
+      const best = forecastNow(await fetchForecast(series, signal), Date.now());
+      return best ? { latest: { t: best.t, v: best.v, q: "" }, ref: null } : null;
+    },
+    async range() {
+      return { series: EMPTY_SERIES, failed: [], note: "" };
+    },
+  };
+
+  function adapterOf(series) {
+    return ADAPTERS[series.source] || ADAPTERS[SRC_DMI];
+  }
+
+  // Seneste måling (eller beregning) i en serie
+  async function fetchLatest(series, signal) {
+    const r = await adapterOf(series).latest(series, signal);
+    return r ? r.latest : null;
+  }
+
+  // Kildens navn i fejlbeskeder, fx "SMHI svarer ikke lige nu"
+  function sourceName(series) {
+    if (series.source === SRC_TIDE || series.source === SRC_DKSS) return "DMI";
+    return series.source;
   }
 
   // Fra og Til er danske datoer. Perioden går fra Fra kl. 00:00 til Til kl. 24:00 i dansk tid, dog højst til nu.
@@ -794,14 +1406,31 @@
 
   // Ét position-kald i stationens prognosepunkt. Værdien er afvigelse fra middelvandstand i meter
   // og omregnes til cm. Den justeres ikke til DVR90.
+  // Prognosen i et punkt gemmes i 10 minutter, så søgning, "Beregnet nu" og graf deler ét kald.
+  const forecastCache = new Map();
+
   async function fetchForecast(station, signal) {
     const f = station.forecast;
     const coords = encodeURIComponent(`POINT(${f.lon} ${f.lat})`);
     const url =
       `${EDR_URL}/${encodeURIComponent(f.model)}/position?coords=${coords}` +
       "&crs=crs84&parameter-name=sea-mean-deviation&f=GeoJSON";
-    const data = await getJsonRetry(url, signal, [2000, 5000]);
-    return parseForecast(data);
+    const hit = forecastCache.get(url);
+    if (hit && Date.now() - hit.at < CACHE_FOR) return hit.points;
+    const data = await getJsonRetry(url, signal, [3000, 8000, 15000]);
+    const points = parseForecast(data);
+    if (points.length) forecastCache.set(url, { at: Date.now(), points });
+    return points;
+  }
+
+  // Prognosens værdi nu: trinnet tættest på nu, dog ikke mere end 30 minutter frem
+  function forecastNow(points, now) {
+    let best = null;
+    for (const p of points) {
+      if (p.t > now + 30 * MIN) continue;
+      if (!best || Math.abs(p.t - now) < Math.abs(best.t - now)) best = p;
+    }
+    return best;
   }
 
   function parseForecast(data) {
@@ -1011,13 +1640,14 @@
   // ====================================================================
 
   // Overskrift: Tid UTC; Tid dansk; for hver serie værdi, type og qcStatus; prognose
-  function csvHeader(list) {
+  // names: valgfrie navne pr. serie (fx stedets navn for en nabomåling). forecastTitle: prognosekolonnens navn.
+  function csvHeader(list, forecastTitle, names) {
     const cols = ["Tid UTC", "Tid dansk"];
-    for (const s of Array.isArray(list) ? list : [list]) {
-      const name = seriesName(s);
+    (Array.isArray(list) ? list : [list]).forEach((s, k) => {
+      const name = (names && names[k]) || seriesName(s);
       cols.push(`${name} (${s.datum})`, `${name} type`, `${name} qcStatus`);
-    }
-    cols.push("Prognose cm (middelvandstand)");
+    });
+    cols.push(forecastTitle || "Prognose cm (middelvandstand)");
     return cols.join(";");
   }
   const CSV_MAX_ROWS = 1000000; // Excel kan højst vise 1.048.576 rækker
@@ -1064,7 +1694,8 @@
     };
     // Rækker kun med prognose: "prognose" står i den første series type-kolonne
     const emptyRest = ";;;".repeat(Math.max(0, K - 1));
-    const forecastOnly = (p) => add(p.t, ";prognose;" + emptyRest + ";" + csvNum(p.v));
+    // Uden serier (en havn uden valgt nabomåling) har filen kun prognosekolonnen.
+    const forecastOnly = (p) => add(p.t, (K ? ";prognose;" + emptyRest + ";" : "") + csvNum(p.v));
 
     const points = forecast || [];
     let j = 0;
@@ -1094,7 +1725,7 @@
       }
       let forecastText = "";
       if (j < points.length && points[j].t === t) forecastText = csvNum(points[j++].v);
-      add(t, rest + ";" + forecastText);
+      add(t, K ? rest + ";" + forecastText : forecastText);
     }
     close();
     return blocks;
@@ -1213,6 +1844,8 @@
     postnumre: null,
     lastPostnr: null,
     lastWithClosed: false,
+    sources: [], // status for kilderne fra stations.json
+    neighbours: [], // havn uden måler: de nærmeste målinger
     place: null, // stedet, der vises
     shown: null, // serien i grafen
     selected: new Set(), // serier med i Excel
@@ -1260,12 +1893,20 @@
 
     state.stations = (stationsFile.stations || []).filter((st) => Number.isFinite(st.lat) && Number.isFinite(st.lon));
     state.postnumre = postnumre;
-    state.places = buildPlaces(state.stations);
+    state.sources = stationsFile.sources || [];
+    state.places = buildPlaces(state.stations, stationsFile.tides || []);
     for (const place of state.places) {
       for (const st of place.stations) {
         state.byId.set(st.id, st);
         state.placeOf.set(st.id, place);
       }
+    }
+    // Havne uden måler er egne steder
+    for (const h of stationsFile.harbours || []) {
+      if (!Number.isFinite(h.lat) || !Number.isFinite(h.lon)) continue;
+      const place = makeHarbour(h);
+      state.places.push(place);
+      state.placeOf.set(h.id, place);
     }
 
     const generated = Date.parse(stationsFile.generatedUtc);
@@ -1321,7 +1962,24 @@
   }
 
   function placeHref(place) {
+    if (place.kind === "havn") return "#station=" + encodeURIComponent(place.id);
     return "#station=" + encodeURIComponent((place.main ? place.main.station : place.stations[0]).id);
+  }
+
+  // "Danmark · DMI" eller "Havn uden måler"
+  function placeOwnerText(place) {
+    if (place.kind === "havn") return "Havn uden måler";
+    return `${COUNTRY_NAMES[place.country] || place.country} · ${place.owners.join(", ")}`;
+  }
+
+  // "2 måleserier, data fra 1891" eller for en havn "Prognose fra DMI"
+  function placeSubText(place) {
+    if (place.kind === "havn") return "Prognose fra DMI, ingen måling";
+    const count = place.series.filter(isMeasured).length;
+    const from = parseIsoDate(place.from);
+    const short = place.sources.length === 1 && (place.sources[0] === SRC_PEGEL || place.sources[0] === SRC_KYST);
+    const days = short ? ", kun 30 dage tilbage" : from ? `, data fra ${from.y}` : "";
+    return `${count} ${count === 1 ? "måleserie" : "måleserier"}${days}`;
   }
 
   function runSearch(postnr, withClosed) {
@@ -1345,17 +2003,12 @@
       const link = el("a", "row");
       link.href = placeHref(place);
 
-      const count = place.series.length;
-      const from = parseIsoDate(place.from);
       const title = el("span", "row-title");
-      title.append(
-        el("span", "row-name", place.name),
-        el("span", "row-sub", `${count} ${count === 1 ? "måleserie" : "måleserier"}` + (from ? `, data fra ${from.y}` : ""))
-      );
+      title.append(el("span", "row-name", place.name), el("span", "row-sub", placeSubText(place)));
 
       const meta = el("span", "row-meta");
       const time = el("span", "row-time");
-      meta.append(el("span", "row-owner", place.owners.join(", ")), el("span", "row-dist", fmtKm(km)), time);
+      meta.append(el("span", "row-owner", placeOwnerText(place)), el("span", "row-dist", fmtKm(km)), time);
       const value = el("span", "row-value", place.active ? "Henter …" : "");
       if (!place.active) {
         const to = parseIsoDate(place.to);
@@ -1379,25 +2032,26 @@
     state.searchJob = job;
     pool(
       rows.filter((row) => row.place.active && row.series),
-      3,
+      5,
       async (row) => {
         try {
           const latest = await fetchLatest(row.series, job.signal);
           if (job.signal.aborted) return;
           markFetched();
+          const computed = row.series.kind === KIND_FORECAST;
           if (!latest) {
-            row.value.textContent = "Ingen måling hos DMI";
+            row.value.textContent = computed ? "Ingen prognose lige nu" : `Ingen måling hos ${sourceName(row.series)}`;
             row.value.classList.add("is-wide");
-          } else if (Date.now() - latest.t > STALE_AFTER) {
+          } else if (!computed && Date.now() - latest.t > STALE_AFTER) {
             row.value.textContent = `Ingen ny måling siden ${fmtDateTime(latest.t)}`;
             row.value.classList.add("is-wide");
           } else {
-            row.value.textContent = `${fmtValue(row.series, latest.v)} ${unitShort(row.series)}`;
+            row.value.textContent = `${fmtValue(row.series, latest.v)} ${unitShort(row.series)}` + (computed ? " beregnet" : "");
             row.time.textContent = fmtDateTime(latest.t);
           }
         } catch (err) {
           if (job.signal.aborted) return;
-          row.value.textContent = "DMI svarer ikke lige nu";
+          row.value.textContent = `${sourceName(row.series)} svarer ikke lige nu`;
           row.value.classList.add("is-wide");
         }
       }
@@ -1480,10 +2134,10 @@
   function placeHash(series, input) {
     const place = state.place;
     const q = new URLSearchParams();
-    q.set("station", place.main ? place.main.id : series.id);
-    if (series !== place.main) q.set("serie", series.key);
+    q.set("station", place.kind === "havn" ? place.id : place.main ? place.main.id : series.id);
+    if (series && series !== place.main) q.set("serie", series.key);
     if (input) {
-      const def = defaultPeriod(series);
+      const def = defaultPeriod(series || place.main);
       const isDefault = compareDates(input.fra, def.fra) === 0 && compareDates(input.til, def.til) === 0;
       if (!isDefault) {
         q.set("fra", isoDate(input.fra));
@@ -1501,14 +2155,22 @@
   function showPlace(place, h) {
     if (state.searchJob) state.searchJob.abort();
     leavePlace();
+    const harbour = place.kind === "havn";
     if (state.cachePlace !== place) {
       // Et nyt sted: hovedserien er valgt til Excel, og gemte bidder fra det forrige sted smides væk.
       clearChunkCache();
       state.cachePlace = place;
-      state.selected = new Set(place.main ? [place.main.key] : []);
+      state.selected = new Set(place.main && !harbour ? [place.main.key] : []);
+      state.neighbours = harbour ? nearestMeasurements(place) : [];
     }
     state.place = place;
-    state.shown = place.series.find((s) => s.key === h.serie) || place.main;
+    if (harbour) {
+      // Grafen viser havnens prognose. Én nabomåling eller Open-Meteo kan lægges på.
+      const options = harbourOptions(place);
+      state.shown = options.find((s) => s.key === h.serie) || null;
+    } else {
+      state.shown = place.series.find((s) => s.key === h.serie) || place.main;
+    }
     const main = place.main;
     const shown = state.shown;
 
@@ -1522,38 +2184,54 @@
     $("stName").textContent = place.name;
     const facts = $("stFacts");
     facts.textContent = "";
-    facts.append(
-      fact(place.owners.length === 1 ? "Ejer" : "Ejere", place.owners.join(", ")),
-      fact(place.stations.length === 1 ? "Station" : "Stationer", place.stations.map((s) => s.id).join(", ")),
-      fact("Hovedserie", `${seriesName(main)}, ${main.datum}`),
-      fact("Data fra", fmtIso(place.from)),
-      fact("Status", place.active ? "aktiv" : `nedlagt, data til ${fmtIso(place.to)}`)
-    );
+    if (harbour) {
+      const f = main.forecast;
+      facts.append(
+        fact("Type", "Havn uden måler"),
+        fact("Land", "Danmark"),
+        fact("Koordinat", "OpenStreetMap" + (place.harbour.osm ? ` (${place.harbour.osm})` : "")),
+        fact("Prognose", f ? `DMI's model DKSS (${f.model}), modelpunkt ${fmtDistance(haversineKm(place.lat, place.lon, f.lat, f.lon))} fra havnen` : "ingen prognosepunkt")
+      );
+    } else {
+      const pegel = place.sources.length === 1 && (place.sources[0] === SRC_PEGEL || place.sources[0] === SRC_KYST);
+      facts.append(
+        fact("Land", COUNTRY_NAMES[place.country] || place.country),
+        fact(place.owners.length === 1 ? "Ejer" : "Ejere", place.owners.join(", ")),
+        fact(place.stations.length === 1 ? "Station" : "Stationer", place.stations.map((s) => s.id).join(", ")),
+        fact("Hovedserie", `${seriesName(main)}, ${main.datum}`),
+        fact(pegel ? "Historik" : "Data fra", pegel ? `kun de seneste 30 dage (${place.sources[0]})` : fmtIso(place.from)),
+        fact("Status", place.active ? "aktiv" : `nedlagt, data til ${fmtIso(place.to)}`)
+      );
+      if (place.tide) facts.append(fact("Tidevand", `${place.tide.name}, ${fmtDistance(place.tide.distanceKm)} fra stationen`));
+    }
+    const kept = state.sources.filter((src) => !src.ok && place.sources.includes(src.name));
+    if (kept.length) {
+      facts.append(
+        fact("Bemærk", `Stationslisten fra ${kept.map((x) => x.name).join(" og ")} kunne ikke opdateres ved seneste kørsel. Stationerne er fra den forrige liste.`)
+      );
+    }
 
     // Periode og grænseværdi fra adressen, ellers de seneste 7 døgn i den viste serie
     let fra = parseIsoDate(h.fra);
     let til = parseIsoDate(h.til);
-    if (!fra || !til) ({ fra, til } = defaultPeriod(shown));
+    if (!fra || !til) ({ fra, til } = defaultPeriod(shown || main));
     const limit = parseLimit(h.graense);
     state.limit = Number.isNaN(limit) ? null : limit;
     $("fra").value = fmtDateParts(fra);
     $("til").value = fmtDateParts(til);
     $("graense").value = limitText(state.limit);
-    renderSeriesTable();
 
     for (const id of ["chartBlock", "notes", "tableBlock", "dataStatus", "excelParts"]) $(id).hidden = true;
-    for (const id of ["periodForm", "shortcuts", "stSource", "seriesBlock"]) $(id).hidden = false;
+    for (const id of ["periodForm", "shortcuts", "stSource"]) $(id).hidden = false;
+    $("seriesBlock").hidden = harbour;
+    $("nearBlock").hidden = !harbour;
+    $("resField").hidden = harbour;
     $("nowBlock").hidden = !place.active;
+    $("nowTitle").textContent = harbour ? "Beregnet nu" : "Seneste måling";
+    if (harbour) renderNearTable();
+    else renderSeriesTable();
     showError($("periodError"), "");
-    const others = place.owners.filter((o) => o !== "DMI");
-    $("stSource").textContent =
-      "Kilde til målingerne: DMI's Frie Data" +
-      (others.length
-        ? `. Stationerne ejes af ${place.owners.join(", ").replace(/, ([^,]*)$/, " og $1")}`
-            .replace("Havn/kommune", "havne eller kommuner")
-            .replace("Ikke oplyst", "en ejer, som DMI ikke oplyser")
-        : "") +
-      ". Kilde til prognosen: DMI's stormflodsmodel DKSS.";
+    $("stSource").textContent = sourceText(place);
 
     renderLatest();
     window.scrollTo(0, 0);
@@ -1564,10 +2242,54 @@
         if (!document.hidden) refreshLatest();
       }, LIVE_EVERY);
     }
+    if (harbour) refreshNeighbours();
     runPeriod({ excel: false });
   }
 
+  // Kildeteksten under stedet
+  function sourceText(place) {
+    const parts = [];
+    if (place.kind === "havn") {
+      parts.push("Kilde til prognosen: DMI's stormflodsmodel DKSS (DMI's Frie Data). Værdien er beregnet og ikke målt.");
+      parts.push("Nærmeste målinger kommer fra deres egne kilder.");
+    } else if (place.sources.includes(SRC_SMHI)) {
+      parts.push(`Kilde til målingerne: SMHI's öppna data. Stationen ejes af ${place.owners.join(" og ")}.`);
+    } else if (place.sources.includes(SRC_PEGEL)) {
+      parts.push("Kilde til målingerne: Wasserstraßen- und Schifffahrtsverwaltung des Bundes (WSV), PEGELONLINE.");
+    } else if (place.sources.length === 1 && place.sources[0] === SRC_KYST) {
+      parts.push("Kilde til målingerne: Kystdirektoratet, Kystatlas (CC BY 4.0).");
+    } else {
+      const others = place.owners.filter((o) => o !== "DMI");
+      parts.push(
+        "Kilde til målingerne: DMI's Frie Data" +
+          (others.length
+            ? `. Stationerne ejes af ${place.owners.join(", ").replace(/, ([^,]*)$/, " og $1")}`
+                .replace("Havn/kommune", "havne eller kommuner")
+                .replace("Ikke oplyst", "en ejer, som DMI ikke oplyser")
+            : "") +
+          "."
+      );
+    }
+    if (place.sources.includes(SRC_KYST) && place.sources.length > 1) parts.push("Kystatlas-måleren: Kystdirektoratet (CC BY 4.0).");
+    if (place.tide) parts.push("Tidevand: beregnet af DMI.");
+    if (place.kind !== "havn") parts.push("Kilde til prognosen: DMI's stormflodsmodel DKSS.");
+    parts.push("Open-Meteo: Open-Meteo.com, CC BY 4.0.");
+    return parts.join(" ");
+  }
+
   // ---------- Tabellen "Måleserier" ----------
+
+  function seriesOwnerText(s) {
+    if (s.kind === KIND_TIDE) return "DMI (beregnet)";
+    if (s.kind === KIND_MODEL) return "Open-Meteo";
+    return s.owner;
+  }
+
+  function seriesStatusText(s) {
+    if (s.kind === KIND_TIDE) return "beregnet";
+    if (s.kind === KIND_MODEL) return "model";
+    return s.active ? "aktiv" : "nedlagt";
+  }
 
   function renderSeriesTable() {
     const place = state.place;
@@ -1596,18 +2318,18 @@
       excelCell.append(box);
 
       const param = el("td");
-      param.append(document.createTextNode(s.parameter));
+      param.append(document.createTextNode(paramLabel(s)));
       if (s === place.main) param.append(el("span", "tag", "hovedserie"));
 
       row.append(
         graphCell,
         excelCell,
-        el("td", "", s.id),
-        el("td", "", s.owner),
+        el("td", "", s.kind === KIND_MODEL ? "–" : s.id),
+        el("td", "", seriesOwnerText(s)),
         param,
         el("td", "", s.datum),
         el("td", "", seriesPeriodText(s)),
-        el("td", "", s.active ? "aktiv" : "nedlagt")
+        el("td", "", seriesStatusText(s))
       );
       body.append(row);
     }
@@ -1620,25 +2342,111 @@
     $("seriesCount").textContent = `${n} af ${total} ${total === 1 ? "serie" : "serier"} med i Excel`;
   }
 
+  // ---------- Havn uden måler: de nærmeste målinger ----------
+
+  // De 3 nærmeste steder med en aktiv måling, uanset land og kilde. Havne tæller ikke.
+  function nearestMeasurements(place) {
+    return nearestPlaces(state.places, place.lat, place.lon, 3, false, (p) => p.kind !== "havn" && p.main && p.main.active).map(
+      ({ place: p, km }) => ({ place: p, series: p.main, km, latest: null, error: false })
+    );
+  }
+
+  // Det, der kan lægges på havnens graf: de nærmeste målinger og Open-Meteo
+  function harbourOptions(place) {
+    return state.neighbours.map((n) => n.series).concat(place.series.filter((s) => s.kind === KIND_MODEL));
+  }
+
+  function neighbourOf(series) {
+    return state.neighbours.find((n) => n.series === series) || null;
+  }
+
+  async function refreshNeighbours() {
+    const place = state.place;
+    const job = state.liveJob || new AbortController();
+    await pool(state.neighbours, 3, async (n) => {
+      try {
+        n.latest = await fetchLatest(n.series, job.signal);
+        n.error = false;
+      } catch (err) {
+        n.error = true;
+      }
+      if (state.place === place) renderNearTable();
+    }).catch(() => {});
+  }
+
+  function renderNearTable() {
+    const place = state.place;
+    const body = $("nearBody");
+    body.textContent = "";
+    const addRow = (key, label, cells, checked) => {
+      const row = el("tr");
+      if (checked) row.className = "is-shown";
+      const radio = el("input");
+      radio.type = "radio";
+      radio.name = "naboer";
+      radio.value = key;
+      radio.checked = checked;
+      radio.setAttribute("aria-label", label);
+      const pick = el("td", "pick");
+      pick.append(radio);
+      row.append(pick, ...cells.map((c) => el("td", c.cls || "", c.text)));
+      body.append(row);
+    };
+    addRow("", "Kun prognosen i grafen", [{ text: "Ingen, kun prognosen" }, { text: "" }, { text: "" }, { text: "" }], !state.shown);
+    for (const n of state.neighbours) {
+      const s = n.series;
+      const latest = n.latest;
+      const value = n.error
+        ? `${sourceName(s)} svarer ikke lige nu`
+        : latest
+          ? `${fmtValue(s, latest.v)} ${unitShort(s)}, ${fmtDateTime(latest.t)}`
+          : "Henter …";
+      addRow(
+        s.key,
+        `Vis målingen ved ${n.place.name} i grafen`,
+        [
+          { text: `${n.place.name} (${COUNTRY_NAMES[n.place.country] || n.place.country})` },
+          { text: fmtKm(n.km), cls: "num" },
+          { text: value },
+          { text: s.datum },
+        ],
+        state.shown === s
+      );
+    }
+    for (const s of place.series.filter((x) => x.kind === KIND_MODEL)) {
+      addRow(
+        s.key,
+        "Vis Open-Meteo i grafen",
+        [{ text: "Open-Meteo (global model, grov)" }, { text: "" }, { text: "beregnet, ikke målt" }, { text: s.datum }],
+        state.shown === s
+      );
+    }
+  }
+
   // Vælg den serie, grafen viser. Ligger perioden uden for seriens data, vises seriens sidste 7 døgn.
   function showSeries(series) {
-    if (!series || series === state.shown) return;
+    if (series === state.shown) return;
     state.shown = series;
-    const input = readPeriodFields();
-    const start = seriesStart(series);
-    const end = seriesEnd(series);
-    const outside =
-      input.error ||
-      (start && compareDates(input.til, start) < 0) ||
-      compareDates(input.fra, end) > 0;
-    if (outside) {
-      const def = defaultPeriod(series);
-      $("fra").value = fmtDateParts(def.fra);
-      $("til").value = fmtDateParts(def.til);
+    if (series) {
+      const input = readPeriodFields();
+      const start = seriesStart(series);
+      const end = seriesEnd(series);
+      const outside =
+        input.error ||
+        (start && compareDates(input.til, start) < 0) ||
+        compareDates(input.fra, end) > 0;
+      if (outside) {
+        const def = defaultPeriod(series);
+        $("fra").value = fmtDateParts(def.fra);
+        $("til").value = fmtDateParts(def.til);
+      }
     }
-    renderSeriesTable();
+    const harbour = state.place.kind === "havn";
+    if (harbour) renderNearTable();
+    else renderSeriesTable();
     // Tabellen er tegnet forfra. Fokus bliver på den valgte radioknap.
-    const radio = Array.from($("seriesBody").querySelectorAll('input[type="radio"]')).find((r) => r.value === series.key);
+    const body = $(harbour ? "nearBody" : "seriesBody");
+    const radio = Array.from(body.querySelectorAll('input[type="radio"]')).find((r) => r.value === (series ? series.key : ""));
     if (radio) radio.focus();
     runPeriod({ excel: false });
   }
@@ -1653,20 +2461,12 @@
     const job = (state.liveJob = new AbortController());
 
     try {
-      const latest = await fetchLatest(main, job.signal);
-      let ref = null;
-      if (latest) {
-        try {
-          ref = await fetchReference(main, latest.t - HOUR, job.signal);
-        } catch (err) {
-          ref = null;
-        }
-      }
+      const r = await adapterOf(main).latest(main, job.signal);
       if (job.signal.aborted || state.place !== place) return;
-      state.latest = latest;
-      state.latestRef = ref;
+      state.latest = r ? r.latest : null;
+      state.latestRef = r ? r.ref : null;
       state.latestAt = Date.now();
-      state.latestError = !latest;
+      state.latestError = !state.latest;
       markFetched();
     } catch (err) {
       if (job.signal.aborted || state.place !== place) return;
@@ -1678,27 +2478,40 @@
   function renderLatest() {
     const main = state.place && state.place.main;
     if (!main) return;
+    const computed = main.kind === KIND_FORECAST;
     const latest = state.latest;
     const trend = $("nowTrend");
     const time = $("nowTime");
     time.classList.remove("is-stale");
     trend.textContent = "";
-    $("nowSeries").textContent = `${seriesName(main)}, ${main.datum}`;
+    $("nowSeries").textContent = computed
+      ? "Beregnet af DMI's model DKSS i havnen. Ikke målt."
+      : `${seriesName(main)}, ${main.datum}`;
 
     if (!latest) {
       $("nowValue").textContent = state.latestError ? "–" : "…";
       $("nowUnit").textContent = "";
       time.textContent = state.latestError
-        ? "DMI svarer ikke lige nu. Prøv igen om lidt."
-        : "Henter seneste måling fra DMI …";
+        ? computed && !main.forecast
+          ? "Havnen har intet prognosepunkt."
+          : `${sourceName(main)} svarer ikke lige nu. Prøv igen om lidt.`
+        : computed
+          ? "Henter beregningen fra DMI …"
+          : `Henter seneste måling fra ${sourceName(main)} …`;
       renderGauge();
       return;
     }
 
     $("nowValue").textContent = fmtValue(main, latest.v);
-    $("nowUnit").textContent = isDvr90(main) || isTemperature(main) ? unitLabel(main) : "cm";
+    $("nowUnit").textContent = computed
+      ? "cm, middelvandstand"
+      : isDvr90(main) || isTemperature(main) || main.datum === "RH2000"
+        ? unitLabel(main)
+        : "cm";
 
-    if (Date.now() - latest.t > STALE_AFTER) {
+    if (computed) {
+      time.textContent = `Beregnet for ${fmtDateTime(latest.t)}`;
+    } else if (Date.now() - latest.t > STALE_AFTER) {
       time.textContent = `Ingen ny måling siden ${fmtDateTime(latest.t)}`;
       time.classList.add("is-stale");
     } else {
@@ -1785,7 +2598,7 @@
     parts.push(`<rect x="${left}" y="${y0 - 1}" width="${boardW}" height="2" fill="${wetZero ? "#FFFFFF" : INK}"/>`);
     parts.push(`<rect x="${left + boardW}" y="${y0 - 1}" width="6" height="2" fill="${INK}"/>`);
     parts.push(
-      `<text x="${labelX}" y="${y0 + font * 0.35}" font-size="${font}" font-weight="600" fill="${INK}">${isDvr90(main) ? "0 DVR90" : "0"}</text>`
+      `<text x="${labelX}" y="${y0 + font * 0.35}" font-size="${font}" font-weight="600" fill="${INK}">${zeroLabel(main)}</text>`
     );
 
     parts.push(
@@ -1837,7 +2650,7 @@
   // 7 døgn, 30 døgn og 1 år går tilbage fra den viste series sidste dag.
   // "Alt" går fra den tidligste dato blandt de serier, der er valgt til Excel.
   function setShortcut(range) {
-    const shown = state.shown;
+    const shown = state.shown || state.place.main;
     let til = seriesEnd(shown);
     let fra;
     if (range === "7d") fra = addDays(til, -7);
@@ -1866,7 +2679,7 @@
     const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
     $("progressText").textContent =
       `Henter ${p.label ? p.label + ", " : ""}${p.year}, ${pct} %` +
-      (p.waiting ? ". DMI svarer ikke lige nu, prøver igen om lidt." : "");
+      (p.waiting ? `. ${p.source || "DMI"} svarer ikke lige nu, prøver igen om lidt.` : "");
     $("progressFill").style.width = pct + "%";
   }
 
@@ -1895,26 +2708,34 @@
     const win = seriesWindow(series, period);
     if (!win) return build15(EMPTY_SERIES, 0, -1);
     const end = Math.min(period.end, win.end);
-    return raw ? buildRaw(obs, win.start, end) : build15(obs, win.start, end, Math.min(end, gapEndMs));
+    const ds = raw ? buildRaw(obs, win.start, end) : build15(obs, win.start, end, Math.min(end, gapEndMs));
+    // Tidevand og modeller er beregnet, ikke målt
+    if (!isMeasured(series)) ds.type.fill(TYPE_COMPUTED);
+    return ds;
   }
 
   // Henter én serie i perioden. Giver målingerne og de bidder, der ikke kunne hentes.
-  async function loadSeries(series, period, signal, label) {
+  // Kilden bestemmer, hvordan der hentes (se ADAPTERS). raw = alle målte tidspunkter til Excel.
+  async function loadSeries(series, period, signal, label, raw) {
     const win = seriesWindow(series, period);
-    if (!win) return { series: EMPTY_SERIES, failed: [] };
-    return fetchRange(series, win.start, win.end, {
+    if (!win) return { series: EMPTY_SERIES, failed: [], note: "" };
+    const result = await adapterOf(series).range(series, win.start, win.end, {
       signal,
+      raw: !!raw,
       onProgress: (p) => {
-        if (state.job && state.job.signal === signal) showProgress(Object.assign({ label }, p));
+        if (state.job && state.job.signal === signal) showProgress(Object.assign({ label, source: sourceName(series) }, p));
       },
     });
+    return Object.assign({ note: "" }, result);
   }
 
   // Henter perioden i Fra og Til for den viste serie og viser den. Et nyt kald afbryder det gamle.
+  // For en havn uden måler er prognosen hovedkurven, og den viste serie er en valgfri nabomåling.
   async function runPeriod(opts) {
     const place = state.place;
     const series = state.shown;
-    if (!place || !series) return;
+    const harbour = place && place.kind === "havn";
+    if (!place || (!series && !harbour)) return;
 
     const input = readPeriodFields();
     if (input.error) {
@@ -1935,35 +2756,45 @@
     const period = periodOf(input.fra, input.til, now);
 
     $("progressFill").style.width = "0%";
-    $("progressText").textContent = `Henter ${seriesName(series)}, ${dkParts(period.start).y}, 0 %`;
+    $("progressText").textContent = `Henter ${series ? seriesName(series) : "prognose"}, ${dkParts(period.start).y}, 0 %`;
     clearTimeout(state.progressTimer);
     state.progressTimer = setTimeout(() => {
       if (state.job === job && !job.signal.aborted) $("progress").hidden = false;
     }, 300);
 
-    // Prognosen hentes samtidig med målingerne. Den vises kun for en aktiv vandstandsserie, når Til er i dag.
-    const wantForecast = period.toToday && series.active && !isTemperature(series) && !!series.forecast;
+    // Prognosen hentes samtidig med målingerne. Den vises, når Til er i dag: i en havn altid,
+    // ellers kun sammen med en aktiv, målt vandstandsserie.
+    const forecastSeries = harbour ? place.main : series;
+    const wantForecast =
+      period.toToday &&
+      !!forecastSeries.forecast &&
+      (harbour || (isMeasured(series) && series.active && !isTemperature(series)));
     const forecastJob = wantForecast
-      ? fetchForecast(series, job.signal).then(
+      ? fetchForecast(forecastSeries, job.signal).then(
           (points) => ({ points: points.filter((p) => p.t >= period.start) }),
           () => ({ points: null })
         )
       : null;
 
     try {
-      const result = await loadSeries(series, period, job.signal, seriesName(series));
+      const result = series
+        ? await loadSeries(series, period, job.signal, seriesName(series))
+        : { series: EMPTY_SERIES, failed: [], note: "" };
       if (job.signal.aborted || state.place !== place || state.shown !== series) return;
       markFetched();
 
-      const ds = seriesDataset(series, result.series, period, now - GAP_GRACE, false);
+      const ds = series ? seriesDataset(series, result.series, period, now - GAP_GRACE, false) : build15(EMPTY_SERIES, 0, -1);
       const view = {
         place,
         series,
+        harbour,
+        forecastSeries,
         station: series,
         period,
         ds,
         raw: result.series,
         failed: result.failed,
+        note: result.note || "",
         fetchedAt: now,
         forecast: null,
         forecastState: wantForecast ? "loading" : "off",
@@ -1978,6 +2809,15 @@
         if (job.signal.aborted || state.place !== place || state.view !== view) return;
         view.forecast = forecast.points;
         view.forecastState = forecast.points && forecast.points.length ? "ok" : "error";
+        // En havn: "Beregnet nu" kan tages fra den prognose, grafen lige har hentet.
+        if (harbour && !state.latest && view.forecastState === "ok") {
+          const best = forecastNow(view.forecast, Date.now());
+          if (best) {
+            state.latest = { t: best.t, v: best.v, q: "" };
+            state.latestError = false;
+            renderLatest();
+          }
+        }
         renderView();
       }
 
@@ -1993,7 +2833,7 @@
         return;
       }
       if (opts && opts.excel && state.view) setStatus("Excel-filen kunne ikke laves. Prøv en kortere periode eller færre serier.");
-      else showError($("periodError"), "DMI svarer ikke lige nu. Prøv igen om lidt.");
+      else showError($("periodError"), `${series ? sourceName(series) : "DMI"} svarer ikke lige nu. Prøv igen om lidt.`);
     } finally {
       if (state.job === job) {
         clearTimeout(state.progressTimer);
@@ -2024,7 +2864,19 @@
 
   // Overskrift på værdikolonnen, fx "Vandstand cm DVR90" eller "Vandtemperatur °C"
   function valueTitle(series) {
-    return isTemperature(series) ? "Vandtemperatur °C" : "Vandstand " + unitLabel(series);
+    if (isTemperature(series)) return "Vandtemperatur °C";
+    if (series.kind === KIND_TIDE) return "Tidevand " + unitLabel(series);
+    if (series.kind === KIND_MODEL) return "Open-Meteo " + unitLabel(series);
+    return "Vandstand " + unitLabel(series);
+  }
+
+  // Tekst om en nabomåling på en havns graf, fx "Målt ved Sletten Havn, 4,3 km væk"
+  function overlayText(view) {
+    const s = view.series;
+    if (!s) return "";
+    if (s.kind === KIND_MODEL) return "Open-Meteo (global model, grov)";
+    const n = neighbourOf(s);
+    return n ? `Målt ved ${n.place.name}, ${fmtKm(n.km)} væk` : seriesName(s);
   }
 
   function renderView() {
@@ -2033,22 +2885,27 @@
     const { series, ds, failed } = view;
     const stats = seriesStats(ds);
     const hasForecast = !!(view.forecast && view.forecast.length);
-    const unit = unitShort(series);
 
-    $("chartTitle").textContent = `${seriesName(series)}, ${unitLabel(series)}`;
-    $("tableUnit").textContent = valueTitle(series);
-    $("noteMissing").textContent = failed.length
-      ? `DMI svarede ikke for ${failedRanges(failed).join(", ")}. Den periode mangler i graf og tabel. Tryk "Vis" for at prøve igen.`
-      : "";
+    $("chartTitle").textContent = view.harbour
+      ? `Prognose for ${view.place.name}, cm, middelvandstand` + (series ? ` · ${overlayText(view)}, ${unitLabel(series)}` : "")
+      : `${seriesName(series)}, ${unitLabel(series)}`;
+    $("noteSource").textContent = view.note || "";
+    $("noteMissing").textContent =
+      series && failed.length
+        ? `${sourceName(series)} svarede ikke for ${failedRanges(failed).join(", ")}. Den periode mangler i graf og tabel. Tryk "Vis" for at prøve igen.`
+        : "";
 
-    if (stats) {
+    if (series && stats) {
+      const unit = unitShort(series);
+      $("tableUnit").textContent = valueTitle(series);
+      const what = view.harbour ? overlayText(view) + ": s" : "S";
       view.summary =
-        `Seneste værdi er ${fmtValue(series, stats.last.v)} ${unit} den ${fmtDateTime(stats.last.t)}, ` +
+        `${what}eneste værdi er ${fmtValue(series, stats.last.v)} ${unit} den ${fmtDateTime(stats.last.t)}, ` +
         `højeste i perioden er ${fmtValue(series, stats.max.v)} ${unit} den ${fmtDateTime(stats.max.t)}, ` +
         `og laveste er ${fmtValue(series, stats.min.v)} ${unit} den ${fmtDateTime(stats.min.t)}.`;
       $("noteSummary").textContent = view.summary;
       $("noteGaps").textContent =
-        ds.gaps === 0
+        !isMeasured(series) || ds.gaps === 0
           ? ""
           : ds.gaps === 1
             ? "1 kvarter uden måling i perioden."
@@ -2056,10 +2913,14 @@
       renderTable(view);
     } else {
       view.summary = "";
-      showError(
-        $("periodError"),
-        `Ingen målinger i perioden for ${seriesName(series)}. Serien har data ${seriesPeriodText(series)}.`
-      );
+      if (series) {
+        const what = isMeasured(series) ? "målinger" : "værdier";
+        showError(
+          $("periodError"),
+          `Ingen ${what} i perioden for ${seriesName(series)}. Serien har data ${seriesPeriodText(series)}.` +
+            (series.source === SRC_PEGEL ? " PEGELONLINE har kun de seneste 30 dage." : "")
+        );
+      }
       $("noteSummary").textContent = "";
       $("noteGaps").textContent = "";
       $("tableBlock").hidden = true;
@@ -2208,9 +3069,25 @@
     const legend = $("legend");
     legend.textContent = "";
     const series = view.series;
-    const unit = unitLabel(series);
-    legend.append(legendItem("", `Målt, ${seriesName(series)} (${unit})`));
-    if (forecast.length) legend.append(legendItem("key-forecast", "Prognose (cm, middelvandstand)"));
+    const unit = series ? unitLabel(series) : "cm, middelvandstand";
+    // Blå betyder målt. Tidevand er prikket i dæmpet farve, Open-Meteo prikket i magenta.
+    const style =
+      !series || isMeasured(series)
+        ? { color: COLOR.sea, dash: [], key: "" }
+        : series.kind === KIND_TIDE
+          ? { color: COLOR.muted, dash: [2, 3], key: "key-tide" }
+          : { color: COLOR.forecast, dash: [2, 3], key: "key-model" };
+    if (series) {
+      const label = view.harbour
+        ? `${overlayText(view)} (${unit})`
+        : `${isMeasured(series) ? "Målt" : paramLabel(series)}, ${seriesName(series)} (${unit})`;
+      legend.append(legendItem(style.key, label));
+    }
+    if (forecast.length) {
+      legend.append(
+        legendItem("key-forecast", view.harbour ? `Prognose for ${view.place.name} (DMI, cm, middelvandstand)` : "Prognose (cm, middelvandstand)")
+      );
+    }
     if (hasLimit) legend.append(legendItem("key-limit", "Grænse"));
 
     // Akser: fra Fra til Til, eller til 5 døgn frem, når prognosen vises
@@ -2245,15 +3122,17 @@
     destroyChart();
     state.overlay = {
       limit: hasLimit ? limit : null,
-      unit: unitShort(series),
+      unit: series ? unitShort(series) : "cm",
       now: view.period.toToday ? view.fetchedAt : 0,
     };
     $("chartBlock").hidden = false;
     const canvas = $("chart");
     canvas.setAttribute(
       "aria-label",
-      `Graf over ${isTemperature(series) ? "vandtemperatur" : "vandstand"} ved ${view.place.name}, ` +
-        `serie ${seriesName(series)} i ${unit}. ${view.summary || "Ingen målinger i perioden."}` +
+      (series
+        ? `Graf over ${isTemperature(series) ? "vandtemperatur" : "vandstand"} ved ${view.place.name}, ` +
+          `serie ${seriesName(series)} i ${unit}. ${view.summary || "Ingen værdier i perioden."}`
+        : `Graf over DMI's prognose for ${view.place.name}.`) +
         (forecast.length ? " Prognosen vises som stiplet linje de næste fem døgn." : "")
     );
 
@@ -2264,9 +3143,10 @@
           {
             label: "Målt",
             data: measured,
-            borderColor: COLOR.sea,
-            backgroundColor: COLOR.sea,
-            borderWidth: 1.5,
+            borderColor: style.color,
+            backgroundColor: style.color,
+            borderWidth: style.dash.length ? 2 : 1.5,
+            borderDash: style.dash,
             pointRadius: (c) => (c.raw && c.raw.alone ? 1.5 : 0),
             pointHoverRadius: 3,
             pointBorderWidth: 0,
@@ -2322,7 +3202,7 @@
             grid: { color: COLOR.line },
             border: { display: false },
             title: { display: true, text: unit, color: COLOR.muted, font: { size: small ? 13 : 14 } },
-            ticks: { maxTicksLimit: small ? 7 : 9, callback: (value) => fmtValue(series, value) },
+            ticks: { maxTicksLimit: small ? 7 : 9, callback: (value) => (series ? fmtValue(series, value) : fmtLevel(value)) },
           },
         },
         plugins: {
@@ -2345,7 +3225,8 @@
                   if (over) lines.push("Over grænsen (prognose, andet nulpunkt)");
                   return lines;
                 }
-                const lines = [`${fmtValue(series, p.y)} ${unit}, ${TYPE_NAMES[p.k]}`];
+                const kind = !series || isMeasured(series) ? TYPE_NAMES[p.k] : series.kind === KIND_TIDE ? "tidevand, beregnet" : "Open-Meteo, beregnet";
+                const lines = [`${fmtValue(series, p.y)} ${unit}, ${kind}`];
                 if (over) lines.push("Over grænsen");
                 return lines;
               },
@@ -2370,8 +3251,8 @@
 
     const text = limitLabel(limit);
     const series = view.series;
-    const unit = unitShort(series);
-    if (view.ds.n) {
+    const unit = series ? unitShort(series) : "cm";
+    if (series && view.ds.n) {
       const e = exceedOfSeries(view.ds, limit);
       if (e.count === 0) {
         note.textContent = `Ingen punkter på den målte kurve ligger over grænsen på ${text} ${unit}.`;
@@ -2395,6 +3276,21 @@
     }
   }
 
+  // Hvad forskellen mellem måling og prognose bygger på. Skriver aldrig "DVR90" ved en serie, der ikke er det.
+  function datumBasis(series) {
+    const tail = " Forskellen kan derfor skyldes forskellige nulpunkter. Prognosen er ikke justeret.";
+    if (isDvr90(series)) return " Måling er i DVR90, prognose er afvigelse fra middelvandstand. Prognosen er ikke justeret.";
+    if (series.datum === "RH2000") return " Målingen er i det svenske højdesystem RH 2000, og prognosen er afvigelse fra middelvandstand." + tail;
+    if (series.datum === "NHN (omregnet fra pegelnul)")
+      return " Målingen er omregnet til det tyske højdesystem NHN, og prognosen er afvigelse fra middelvandstand." + tail;
+    if (series.datum === "pegelnul") return " Målingen er i forhold til målerens pegelnul, og prognosen er afvigelse fra middelvandstand." + tail;
+    if (series.datum === "middelvandstand (SMHI)")
+      return " Målingen er i forhold til SMHI's middelvandstand, og prognosen er afvigelse fra DMI's middelvandstand. De to er ikke nødvendigvis ens. Prognosen er ikke justeret.";
+    if (series.datum === "lokalt nulpunkt")
+      return " Målingen er i forhold til et lokalt nulpunkt, og prognosen er afvigelse fra middelvandstand." + tail;
+    return " DMI dokumenterer ikke målingens nulpunkt, og prognosen er afvigelse fra middelvandstand." + tail;
+  }
+
   function renderForecastNotes() {
     const view = state.view;
     const note = $("noteForecast");
@@ -2405,20 +3301,33 @@
     if (!view) return;
 
     const series = view.series;
-    if (isTemperature(series)) {
-      note.textContent = "Prognosen er for vandstand og vises ikke sammen med vandtemperatur.";
-      return;
+    const fs = view.forecastSeries;
+    const modelText =
+      series && series.kind === KIND_TIDE
+        ? " Tidevandet er beregnet af DMI ud fra månens og solens påvirkning. Det tager ikke højde for vind og lufttryk, og DMI oplyser ikke nulpunktet."
+        : series && series.kind === KIND_MODEL
+          ? " Open-Meteo er en global model med et groft gitter. Open-Meteo skriver, at den ikke må bruges til sejlads tæt på kysten."
+          : "";
+    if (!view.harbour) {
+      if (!isMeasured(series)) {
+        note.textContent = modelText.trim();
+        return;
+      }
+      if (isTemperature(series)) {
+        note.textContent = "Prognosen er for vandstand og vises ikke sammen med vandtemperatur.";
+        return;
+      }
+      if (!series.active) {
+        note.textContent = "Prognosen vises kun sammen med en aktiv serie.";
+        return;
+      }
     }
-    if (!series.active) {
-      note.textContent = "Prognosen vises kun sammen med en aktiv serie.";
-      return;
-    }
-    if (!series.forecast) {
-      note.textContent = "Ingen prognose for denne station.";
+    if (!fs || !fs.forecast) {
+      note.textContent = view.harbour ? "Havnen har intet prognosepunkt i DMI's model." : "Ingen prognose for denne station.";
       return;
     }
     if (view.forecastState === "off") {
-      note.textContent = "Prognosen vises, når Til er i dag.";
+      note.textContent = "Prognosen vises, når Til er i dag." + modelText;
       return;
     }
     if (view.forecastState === "loading") {
@@ -2431,22 +3340,19 @@
       return;
     }
 
-    const f = series.forecast;
-    const km = haversineKm(series.lat, series.lon, f.lat, f.lon);
+    const f = fs.forecast;
+    const km = haversineKm(fs.lat, fs.lon, f.lat, f.lon);
     const last = view.forecast[view.forecast.length - 1].t;
     note.textContent =
-      `Prognosen er fra DMI's stormflodsmodel DKSS (${f.model}) i et modelpunkt ${fmtDistance(km)} fra stationen ` +
-      `og går til ${fmtDateTime(last)}.` +
-      (km > 5 ? " Modelpunktet ligger langt fra stationen, så prognosen kan afvige meget fra vandstanden her." : "");
+      `Prognosen er fra DMI's stormflodsmodel DKSS (${f.model}) i et modelpunkt ${fmtDistance(km)} fra ${view.harbour ? "havnen" : "stationen"} ` +
+      `og går til ${fmtDateTime(last)}. Den er beregnet og ikke målt.` +
+      (km > 5 ? " Modelpunktet ligger langt væk, så prognosen kan afvige meget fra vandstanden her." : "") +
+      modelText;
 
+    // Forskellen mellem måling og prognose giver kun mening for en målt serie på selve stedet
+    if (view.harbour || !isMeasured(series)) return;
     const o = overlapOf(view.ds, view.forecast);
-    const basis = isDvr90(series)
-      ? " Måling er i DVR90, prognose er afvigelse fra middelvandstand. Prognosen er ikke justeret."
-      : series.datum === "lokalt nulpunkt"
-        ? " Målingen er i forhold til et lokalt nulpunkt, og prognosen er afvigelse fra middelvandstand. " +
-          "Forskellen kan derfor skyldes forskellige nulpunkter. Prognosen er ikke justeret."
-        : " DMI dokumenterer ikke målingens nulpunkt, og prognosen er afvigelse fra middelvandstand. " +
-          "Forskellen kan derfor skyldes forskellige nulpunkter. Prognosen er ikke justeret.";
+    const basis = datumBasis(series);
     if (o.n === 0) {
       overlapNote.textContent = "Der er endnu ingen timer med både måling og prognose, så forskellen kan ikke beregnes." + basis;
       return;
@@ -2485,8 +3391,9 @@
   // Serierne hentes én ad gangen, hver i kvartaler med højst 3 kald ad gangen.
   async function downloadExcel(view, job) {
     const { place, period } = view;
-    const list = selectedSeries();
-    if (!list.length) {
+    // En havn: prognosen og den nabomåling, der er lagt på grafen. Ellers serierne med flueben.
+    const list = view.harbour ? (view.series ? [view.series] : []) : selectedSeries();
+    if (!list.length && !view.harbour) {
       setStatus('Vælg mindst én serie med "Med i Excel" i tabellen Måleserier.');
       return;
     }
@@ -2502,20 +3409,21 @@
       const s = list[k];
       const label = `${seriesName(s)} (${k + 1} af ${list.length})`;
       let obs;
-      if (s === view.series) {
+      // Den viste serie er hentet. Rå minutværdier fra SMHI skal dog hentes særskilt.
+      if (s === view.series && !(raw && s.source === SRC_SMHI)) {
         obs = view.raw;
-        if (view.failed.length) missing.push(`${seriesName(s)}: ${failedRanges(view.failed).join(", ")}`);
+        if (view.failed.length) missing.push(`${sourceName(s)}, ${seriesName(s)}: ${failedRanges(view.failed).join(", ")}`);
       } else {
         let result;
         try {
-          result = await loadSeries(s, period, job.signal, label);
+          result = await loadSeries(s, period, job.signal, label, raw);
         } catch (err) {
           if (job.signal.aborted) throw err;
           result = { series: EMPTY_SERIES, failed: [{ start: period.start, end: period.end }] };
         }
         if (job.signal.aborted || state.view !== view) return;
         obs = result.series;
-        if (result.failed.length) missing.push(`${seriesName(s)}: ${failedRanges(result.failed).join(", ")}`);
+        if (result.failed.length) missing.push(`${sourceName(s)}, ${seriesName(s)}: ${failedRanges(result.failed).join(", ")}`);
       }
       sets.push(seriesDataset(s, obs, period, gapEnd, raw));
     }
@@ -2531,18 +3439,22 @@
     await new Promise((resolve) => setTimeout(resolve, 30)); // lad teksten nå at blive vist
     if (state.view !== view) return;
 
-    const header = csvHeader(list);
+    const names = view.harbour
+      ? list.map((s) => (s.kind === KIND_MODEL ? `Open-Meteo ved ${place.name}` : `${neighbourOf(s) ? neighbourOf(s).place.name : ""} ${seriesName(s)}`.trim()))
+      : null;
+    const header = csvHeader(list, view.harbour ? `Prognose ${place.name} cm (middelvandstand)` : null, names);
     const parts = csvParts(csvBlocks(sets, forecast, QC_NAMES), CSV_MAX_ROWS);
     const total = parts.reduce((sum, p) => sum + p.rows, 0);
     const type = "text/csv;charset=utf-8";
-    const what = `${list.length} ${list.length === 1 ? "serie" : "serier"}, ${raw ? "rå målinger" : "15 minutter"}`;
+    const what = view.harbour
+      ? `prognose${list.length ? " og " + overlayText(view) : ""}`
+      : `${list.length} ${list.length === 1 ? "serie" : "serier"}, ${raw ? "rå målinger" : "15 minutter"}`;
     const extra =
-      (period.toToday && view.series.active && view.series.forecast && !isTemperature(view.series) && view.forecastState !== "ok"
-        ? " Prognosen er ikke med, fordi den ikke kunne hentes."
-        : "") + (missing.length ? ` DMI svarede ikke for ${missing.join("; ")}. Det mangler i filen.` : "");
+      (view.forecastState !== "off" && view.forecastState !== "ok" ? " Prognosen er ikke med, fordi den ikke kunne hentes." : "") +
+      (missing.length ? ` Kilden svarede ikke for ${missing.join("; ")}. Det mangler i filen.` : "");
 
     if (parts.length === 1) {
-      const name = csvFileName(place, period.fra, period.til, list.length, raw, 1, 1);
+      const name = csvFileName(place, period.fra, period.til, list.length + (view.harbour && forecast.length ? 1 : 0), raw, 1, 1);
       saveFile(new Blob(csvPieces(parts[0], header), { type }), name);
       setStatus(`Excel-filen er hentet: ${name} med ${fmtCount(total)} rækker (${what}).` + extra);
       return;
@@ -2555,7 +3467,7 @@
     );
     const ul = el("ul");
     parts.forEach((part, index) => {
-      const name = csvFileName(place, period.fra, period.til, list.length, raw, index + 1, parts.length);
+      const name = csvFileName(place, period.fra, period.til, list.length + (view.harbour && forecast.length ? 1 : 0), raw, index + 1, parts.length);
       const url = URL.createObjectURL(new Blob(csvPieces(part, header), { type }));
       state.blobUrls.push(url);
       const firstYear = part.blocks[0].year;
@@ -2631,6 +3543,11 @@
         else state.selected.delete(series.key);
         renderSelectedCount();
       }
+    });
+    $("nearBody").addEventListener("change", (event) => {
+      const input = event.target;
+      if (!state.place || !input || input.type !== "radio" || !input.checked) return;
+      showSeries(harbourOptions(state.place).find((s) => s.key === input.value) || null);
     });
     $("selectAll").addEventListener("click", () => {
       if (!state.place) return;
