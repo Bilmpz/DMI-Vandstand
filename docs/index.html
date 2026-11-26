@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DMI Vandstand</title>
+  <meta name="description" content="Find vandstand ved dit postnummer: seneste måling, historik og DMI's prognose. Hent det hele som en fil til Excel.">
+  <link rel="icon" type="image/png" href="BA.png">
+  <link rel="preload" href="fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="#">
+        <img src="BA.png" alt="BA Technologies" width="28" height="28">
+        <span>DMI Vandstand</span>
+      </a>
+      <p class="top-status" id="listStatus" aria-live="polite"></p>
+    </div>
+  </header>
+
+  <main>
+    <!-- Søgning -->
+    <section id="viewSearch">
+      <div class="band">
+        <div class="wrap">
+          <h1 id="searchTitle" tabindex="-1">Find vandstand ved dit postnummer</h1>
+          <p class="lead">Se de fem nærmeste målestationer med seneste måling. Vælg en station for at se vandstanden over tid og DMI's prognose, og hent det hele til Excel.</p>
+          <form id="searchForm" class="search" novalidate>
+            <div class="field">
+              <label for="postnr">Postnummer</label>
+              <input id="postnr" name="postnr" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="4" aria-describedby="searchError">
+            </div>
+            <button class="btn btn-primary" type="submit">Søg</button>
+          </form>
+          <p class="msg msg-error" id="searchError" role="alert" hidden></p>
+        </div>
+      </div>
+
+      <div class="wrap">
+        <div id="results" hidden>
+          <h2 id="resultsTitle"></h2>
+          <ul class="rows" id="resultRows"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Station -->
+    <section id="viewStation" hidden>
+      <div class="wrap">
+        <p class="back"><a id="backLink" href="#">Tilbage til søgning</a></p>
+
+        <h1 id="stName" tabindex="-1"></h1>
+        <dl class="facts" id="stFacts"></dl>
+        <p class="sensors" id="stSensors" hidden></p>
+
+        <div class="now" id="nowBlock" hidden>
+          <div class="gauge" id="gauge"></div>
+          <div class="now-text">
+            <h2>Seneste måling</h2>
+            <p class="now-value"><span id="nowValue"></span><span class="now-unit" id="nowUnit"></span></p>
+            <p class="now-line" id="nowTime"></p>
+            <p class="now-line" id="nowTrend"></p>
+          </div>
+        </div>
+
+        <form id="periodForm" class="controls" novalidate hidden>
+          <div class="field">
+            <label for="fra">Fra</label>
+            <input id="fra" name="fra" type="text" inputmode="numeric" autocomplete="off" placeholder="dd.mm.åååå" maxlength="10">
+          </div>
+          <div class="field">
+            <label for="til">Til</label>
+            <input id="til" name="til" type="text" inputmode="numeric" autocomplete="off" placeholder="dd.mm.åååå" maxlength="10">
+          </div>
+          <div class="field field-limit">
+            <label for="graense">Grænseværdi i cm (valgfri)</label>
+            <input id="graense" name="graense" type="text" inputmode="text" autocomplete="off" maxlength="7">
+          </div>
+          <button class="btn btn-secondary" type="submit" id="showBtn">Vis</button>
+          <button class="btn btn-primary" type="button" id="excelBtn">Hent Excel</button>
+        </form>
+
+        <p class="shortcuts" id="shortcuts" hidden>
+          <span>Genveje til perioden</span>
+          <button type="button" class="link" data-range="7d">7 døgn</button>
+          <button type="button" class="link" data-range="30d">30 døgn</button>
+          <button type="button" class="link" data-range="1y">1 år</button>
+          <button type="button" class="link" data-range="all">Alt</button>
+        </p>
+
+        <p class="msg msg-error" id="periodError" role="alert" hidden></p>
+
+        <div class="progress" id="progress" hidden>
+          <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+          <div class="progress-row">
+            <p id="progressText" role="status" aria-live="polite"></p>
+            <button type="button" class="btn btn-secondary" id="stopBtn">Stop</button>
+          </div>
+        </div>
+
+        <p class="msg" id="dataStatus" role="status" aria-live="polite" hidden></p>
+        <div id="excelParts" hidden></div>
+
+        <div id="chartBlock" hidden>
+          <ul class="legend" id="legend"></ul>
+          <div class="chart-box"><canvas id="chart" role="img"></canvas></div>
+        </div>
+
+        <div class="notes" id="notes" hidden>
+          <p id="noteSummary"></p>
+          <p id="noteGaps"></p>
+          <p id="noteLimit"></p>
+          <p id="noteForecastLimit"></p>
+          <p id="noteOverlap"></p>
+          <p id="noteForecast"></p>
+          <p class="msg-error" id="noteMissing" role="alert"></p>
+        </div>
+
+        <div id="tableBlock" hidden>
+          <h2>Seneste rækker</h2>
+          <p id="tableNote">Tabellen viser de 50 nyeste rækker. Hele perioden ligger i Excel-filen.</p>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="De 50 nyeste rækker">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Tid (dansk)</th>
+                  <th scope="col" class="num">Vandstand cm DVR90</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">qcStatus</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="source" id="stSource" hidden></p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>Kilde: DMI. Målinger af vandstand kommer fra DMI og Kystdirektoratet og hentes fra DMI's Frie Data under licensen <a href="https://creativecommons.org/licenses/by/4.0/legalcode.da" rel="noopener">CC BY 4.0</a>. Værdier mærket "beregnet" er baseret på data fra DMI og efterfølgende bearbejdet. Prognosen kommer fra DMI's stormflodsmodel DKSS. Postnumre kommer fra <a href="https://www.geonames.org/" rel="noopener">GeoNames</a> (CC BY 4.0).</p>
+      <p id="fetchedLine"></p>
+      <p class="foot-row"><span>DMI Vandstand v1.0</span><span>Made by Oliver Lobel</span></p>
+    </div>
+  </footer>
+
+  <script src="vendor/chart-4.6.2.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
