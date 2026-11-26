@@ -429,7 +429,7 @@
     const q = [];
 
     for (let page = 0; url && page < 100; page++) {
-      const data = await getJsonRetry(url, signal, [1000, 3000]); // en fejlet bid prøves igen 2 gange
+      const data = await getJson(url, signal);
       const features = data.features || [];
       for (const f of features) {
         const p = f.properties;
@@ -454,8 +454,17 @@
 
   class DmiDownError extends Error {}
 
+  // En fejlet bid prøves igen 2 gange. Mens der ventes, holder de andre kald også pause,
+  // så en overbelastet server ikke får flere kald. DMI svarer 429 ("Server is busy"), når den har travlt.
+  const RETRY_PAUSES = [3000, 8000];
+  const FINAL_PAUSE = 10000; // pause før bidder, der stadig mangler, prøves en sidste gang
+
   async function fetchRange(station, startMs, endMs, opts) {
     const options = opts || {};
+    const signal = options.signal;
+    const pauses = options.pauses || RETRY_PAUSES;
+    const finalPause = options.finalPause === undefined ? FINAL_PAUSE : options.finalPause;
+
     const key0 = station.id + "|" + station.parameter;
     if (chunkCacheStation !== key0) {
       chunkCache.clear();
@@ -467,37 +476,70 @@
     }
 
     const chunks = planChunks(startMs, endMs);
-    const parts = new Array(chunks.length);
-    const failed = [];
+    const parts = new Array(chunks.length).fill(EMPTY_SERIES);
     let done = 0;
-    const report = (chunk) => {
-      if (options.onProgress) options.onProgress({ year: chunk.year, done, total: chunks.length });
+    let holdUntil = 0;
+    const report = (chunk, waiting) => {
+      if (options.onProgress) options.onProgress({ year: chunk.year, done, total: chunks.length, waiting: !!waiting });
     };
 
-    await pool(chunks, 3, async (chunk, i) => {
-      report(chunk);
+    // Henter én bid. Giver false, hvis den stadig fejler efter 2 nye forsøg.
+    const load = async (chunk, i) => {
       const key = chunk.start + "|" + chunk.end;
       const hit = chunkCache.get(key);
       if (hit && chunk.end < hit.at - HOUR) {
         parts[i] = hit.series;
-      } else {
+        return true;
+      }
+      for (let attempt = 0; ; attempt++) {
+        if (signal && signal.aborted) throw new DOMException("Afbrudt", "AbortError");
+        while (holdUntil > Date.now()) {
+          report(chunk, true);
+          await sleep(holdUntil - Date.now(), signal);
+        }
+        report(chunk, false);
         try {
           const at = Date.now();
-          parts[i] = await fetchWindow(station, chunk.start, chunk.end, options.signal);
+          parts[i] = await fetchWindow(station, chunk.start, chunk.end, signal);
           chunkCache.set(key, { at, series: parts[i] });
+          return true;
         } catch (err) {
-          if (options.signal && options.signal.aborted) throw err;
-          failed.push(chunk);
-          parts[i] = EMPTY_SERIES;
+          if (signal && signal.aborted) throw err;
+          const retryable = !(err instanceof HttpError) || err.status === 429 || err.status >= 500;
+          if (!retryable || attempt >= pauses.length) return false;
+          holdUntil = Math.max(holdUntil, Date.now() + pauses[attempt]);
         }
       }
-      done++;
-      report(chunk);
+    };
+
+    let failed = [];
+    await pool(chunks, 3, async (chunk, i) => {
+      if (await load(chunk, i)) done++;
+      else failed.push(i);
+      report(chunk, false);
     });
 
     if (failed.length === chunks.length) throw new DmiDownError("DMI svarer ikke");
-    failed.sort((a, b) => a.start - b.start);
-    return { series: mergeSeries(parts), failed };
+
+    // Sidste runde: bidder, der fejlede, prøves igen én ad gangen efter en pause.
+    // Fejler den første stadig, er DMI ikke klar, og resten meldes som manglende.
+    if (failed.length) {
+      const again = failed.sort((a, b) => a - b);
+      failed = [];
+      holdUntil = Math.max(holdUntil, Date.now() + finalPause);
+      let giveUp = false;
+      for (const i of again) {
+        if (!giveUp && (await load(chunks[i], i))) {
+          done++;
+        } else {
+          giveUp = true;
+          failed.push(i);
+        }
+        report(chunks[i], false);
+      }
+    }
+
+    return { series: mergeSeries(parts), failed: failed.map((i) => chunks[i]) };
   }
 
   // Fra og Til er danske datoer. Perioden går fra Fra kl. 00:00 til Til kl. 24:00 i dansk tid, dog højst til nu.
@@ -918,6 +960,7 @@
     packSeries,
     mergeSeries,
     periodOf,
+    fetchRange,
     build15,
     seriesStats,
     parseForecast,
@@ -1470,7 +1513,8 @@
 
   function showProgress(p) {
     const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
-    $("progressText").textContent = `Henter ${p.year}, ${pct} %`;
+    $("progressText").textContent =
+      `Henter ${p.year}, ${pct} %` + (p.waiting ? ". DMI svarer ikke lige nu, prøver igen om lidt." : "");
     $("progressFill").style.width = pct + "%";
   }
 
