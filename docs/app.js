@@ -805,6 +805,109 @@
   }
 
   // ====================================================================
+  // Excel-fil: CSV med semikolon, decimalkomma, CRLF og UTF-8 med BOM
+  // ====================================================================
+
+  const CSV_HEADER = "Tid UTC;Tid dansk;Vandstand cm DVR90;Type;qcStatus;Prognose cm (middelvandstand)";
+  const CSV_MAX_ROWS = 1000000; // Excel kan højst vise 1.048.576 rækker
+  const CRLF = "\r\n";
+  const BOM = String.fromCharCode(0xfeff);
+
+  // Decimalkomma og almindelig bindestreg som minus
+  function csvNum(v) {
+    return String(round1(v)).replace(".", ",");
+  }
+
+  // yyyy-MM-dd HH:mm for et tidspunkt, der allerede er forskudt til den ønskede tidszone
+  function stamp(ms) {
+    const d = new Date(ms);
+    return (
+      d.getUTCFullYear() + "-" + p2(d.getUTCMonth() + 1) + "-" + p2(d.getUTCDate()) +
+      " " + p2(d.getUTCHours()) + ":" + p2(d.getUTCMinutes())
+    );
+  }
+
+  // Rækkerne som tekst, samlet i blokke pr. dansk kalenderår: [{ year, rows, text }].
+  // Prognosen står i sin egen kolonne på hele timer. Efter seneste måling kommer kun rækker med type "prognose".
+  function csvBlocks(ds, forecast, qcNames) {
+    const blocks = [];
+    let year = null;
+    let lines = [];
+
+    const close = () => {
+      if (lines.length) blocks.push({ year, rows: lines.length, text: lines.join(CRLF) + CRLF });
+      lines = [];
+    };
+    const add = (ms, rest) => {
+      const local = ms + offsetMin(ms) * MIN;
+      const y = new Date(local).getUTCFullYear();
+      if (y !== year) {
+        close();
+        year = y;
+      }
+      lines.push(stamp(ms) + ";" + stamp(local) + ";" + rest);
+    };
+    const forecastOnly = (p) => add(p.t, ";prognose;;" + csvNum(p.v));
+
+    const points = forecast || [];
+    let j = 0;
+    for (let i = 0; i < ds.n; i++) {
+      const t = ds.t[i];
+      while (j < points.length && points[j].t < t) forecastOnly(points[j++]);
+      let forecastText = "";
+      if (j < points.length && points[j].t === t) forecastText = csvNum(points[j++].v);
+      add(t, csvNum(ds.v[i]) + ";" + TYPE_NAMES[ds.type[i]] + ";" + (qcNames[ds.q[i]] || "") + ";" + forecastText);
+    }
+    while (j < points.length) forecastOnly(points[j++]);
+    close();
+    return blocks;
+  }
+
+  // Over 1.000.000 rækker deles filen i flere på hele år.
+  function csvParts(blocks, maxRows) {
+    const limit = maxRows || CSV_MAX_ROWS;
+    let total = 0;
+    for (const b of blocks) total += b.rows;
+    if (total <= limit) return [{ blocks, rows: total }];
+
+    const parts = [];
+    let current = { blocks: [], rows: 0 };
+    for (const b of blocks) {
+      if (current.rows > 0 && current.rows + b.rows > limit) {
+        parts.push(current);
+        current = { blocks: [], rows: 0 };
+      }
+      current.blocks.push(b);
+      current.rows += b.rows;
+    }
+    if (current.rows > 0) parts.push(current);
+    return parts;
+  }
+
+  // Indholdet af én fil som en liste af tekststykker (til en Blob)
+  function csvPieces(part) {
+    return [BOM + CSV_HEADER + CRLF].concat(part.blocks.map((b) => b.text));
+  }
+
+  function slug(name) {
+    return (
+      name
+        .toLowerCase()
+        .replace(/æ/g, "ae")
+        .replace(/ø/g, "oe")
+        .replace(/å/g, "aa")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "station"
+    );
+  }
+
+  // vandstand_{stationId}_{navn}_{parameter}_{fra}_{til}.csv, med _del1, _del2 ... når filen er delt
+  function csvFileName(station, fra, til, partNo, partCount) {
+    const base = `vandstand_${station.id}_${slug(station.name)}_${station.parameter}_${isoDate(fra)}_${isoDate(til)}`;
+    return base + (partCount > 1 ? `_del${partNo}` : "") + ".csv";
+  }
+
+  // ====================================================================
   // Siden
   // ====================================================================
 
@@ -823,6 +926,11 @@
     exceedOfForecast,
     chartPoints,
     timeTicks,
+    CSV_HEADER,
+    csvBlocks,
+    csvParts,
+    csvPieces,
+    csvFileName,
     offsetMin,
     dkToUtc,
     dkParts,
@@ -871,6 +979,7 @@
     limit: null,
     view: null,
     chart: null,
+    blobUrls: [],
     overlay: null,
   };
 
@@ -1040,6 +1149,7 @@
     state.latestRef = null;
     state.view = null;
     destroyChart();
+    releaseExcelLinks();
     $("progress").hidden = true;
   }
 
@@ -1382,7 +1492,7 @@
     }
     showError($("periodError"), "");
     setStatus("");
-    $("excelParts").hidden = true;
+    releaseExcelLinks();
 
     state.limit = input.limit;
     history.replaceState(null, "", stationHash(station.id, input));
@@ -1441,6 +1551,14 @@
         view.forecast = forecast.points;
         view.forecastState = forecast.points && forecast.points.length ? "ok" : "error";
         renderView();
+      }
+
+      if (opts && opts.excel) {
+        try {
+          await downloadExcel(view);
+        } catch (err) {
+          setStatus("Excel-filen kunne ikke laves. Prøv en kortere periode.");
+        }
       }
     } catch (err) {
       if (state.station !== station) return;
@@ -1887,6 +2005,78 @@
     overlapNote.textContent = `${how} ${hours} med både måling og prognose.` + basis;
   }
 
+  // ---------- Excel-fil ----------
+
+  function releaseExcelLinks() {
+    for (const url of state.blobUrls) URL.revokeObjectURL(url);
+    state.blobUrls = [];
+    $("excelParts").textContent = "";
+    $("excelParts").hidden = true;
+  }
+
+  function saveFile(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    link.hidden = true;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  // Laver filen af det, der lige er hentet: 15-minutters datasættet og prognosen.
+  async function downloadExcel(view) {
+    const { station, period, ds } = view;
+    const forecast = view.forecastState === "ok" ? view.forecast : [];
+    if (!ds.n && !forecast.length) return;
+
+    setStatus("Laver Excel-fil …");
+    await new Promise((resolve) => setTimeout(resolve, 30)); // lad teksten nå at blive vist
+    if (state.view !== view) return;
+
+    const parts = csvParts(csvBlocks(ds, forecast, QC_NAMES), CSV_MAX_ROWS);
+    const total = parts.reduce((sum, p) => sum + p.rows, 0);
+    const type = "text/csv;charset=utf-8";
+    const extra =
+      (view.period.toToday && station.forecast && view.forecastState !== "ok"
+        ? " Prognosen er ikke med, fordi den ikke kunne hentes."
+        : "") + (view.failed.length ? " Nogle perioder mangler, se under grafen." : "");
+
+    if (parts.length === 1) {
+      const name = csvFileName(station, period.fra, period.til, 1, 1);
+      saveFile(new Blob(csvPieces(parts[0]), { type }), name);
+      setStatus(`Excel-filen er hentet: ${name} med ${fmtCount(total)} rækker.` + extra);
+      return;
+    }
+
+    // Over 1.000.000 rækker: sig det først, og lad brugeren hente filerne én ad gangen.
+    setStatus(
+      `Perioden har ${fmtCount(total)} rækker. Excel kan højst vise 1.048.576 rækker, ` +
+        `så filen er delt i ${parts.length} filer på hele år. Hent dem her:` + extra
+    );
+    const list = el("ul");
+    parts.forEach((part, index) => {
+      const name = csvFileName(station, period.fra, period.til, index + 1, parts.length);
+      const url = URL.createObjectURL(new Blob(csvPieces(part), { type }));
+      state.blobUrls.push(url);
+      const firstYear = part.blocks[0].year;
+      const lastYear = part.blocks[part.blocks.length - 1].year;
+      const years = firstYear === lastYear ? `${firstYear}` : `${firstYear} til ${lastYear}`;
+      const link = el("a", "", `Hent del ${index + 1}: ${years}, ${fmtCount(part.rows)} rækker`);
+      link.href = url;
+      link.download = name;
+      const item = el("li");
+      item.append(link);
+      list.append(item);
+    });
+    const box = $("excelParts");
+    box.textContent = "";
+    box.append(list);
+    box.hidden = false;
+  }
+
   // ---------- Start ----------
 
   function start() {
@@ -1902,6 +2092,7 @@
       event.preventDefault();
       runPeriod({ excel: false });
     });
+    $("excelBtn").addEventListener("click", () => runPeriod({ excel: true }));
     $("stopBtn").addEventListener("click", stopJob);
     $("shortcuts").addEventListener("click", (event) => {
       const range = event.target && event.target.getAttribute && event.target.getAttribute("data-range");
