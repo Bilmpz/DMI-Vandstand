@@ -584,6 +584,227 @@
   }
 
   // ====================================================================
+  // Prognose (DMI's stormflodsmodel DKSS) og beregninger til grafen
+  // ====================================================================
+
+  const EDR_URL = "https://opendataapi.dmi.dk/v1/forecastedr/collections";
+  const TYPE_FORECAST = 3;
+
+  // Ét position-kald i stationens prognosepunkt. Værdien er afvigelse fra middelvandstand i meter
+  // og omregnes til cm. Den justeres ikke til DVR90.
+  async function fetchForecast(station, signal) {
+    const f = station.forecast;
+    const coords = encodeURIComponent(`POINT(${f.lon} ${f.lat})`);
+    const url =
+      `${EDR_URL}/${encodeURIComponent(f.model)}/position?coords=${coords}` +
+      "&crs=crs84&parameter-name=sea-mean-deviation&f=GeoJSON";
+    const data = await getJsonRetry(url, signal, [2000, 5000]);
+    return parseForecast(data);
+  }
+
+  function parseForecast(data) {
+    const points = [];
+    for (const feature of (data && data.features) || []) {
+      const p = feature.properties || {};
+      const value = p["sea-mean-deviation"];
+      const t = Date.parse(p.step);
+      if (typeof value === "number" && Number.isFinite(value) && !Number.isNaN(t)) {
+        points.push({ t, v: round1(value * 100) });
+      }
+    }
+    points.sort((a, b) => a.t - b.t);
+    return points;
+  }
+
+  function indexOfTime(times, n, t) {
+    let lo = 0;
+    let hi = n - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (times[mid] === t) return mid;
+      if (times[mid] < t) lo = mid + 1;
+      else hi = mid - 1;
+    }
+    return -1;
+  }
+
+  // Gennemsnittet af (måling − prognose) i de timer, hvor der er begge dele
+  function overlapOf(ds, forecast) {
+    let sum = 0;
+    let n = 0;
+    let first = 0;
+    let last = 0;
+    for (const p of forecast) {
+      const i = indexOfTime(ds.t, ds.n, p.t);
+      if (i < 0) continue;
+      sum += ds.v[i] - p.v;
+      if (n === 0) first = p.t;
+      last = p.t;
+      n++;
+    }
+    return n ? { n, mean: sum / n, first, last } : { n: 0 };
+  }
+
+  // Punkter over grænsen i 15-minutters datasættet
+  function exceedOfSeries(ds, limit) {
+    const out = { count: 0, measured: 0, computed: 0, first: 0, last: 0, max: -Infinity, maxT: 0 };
+    for (let i = 0; i < ds.n; i++) {
+      if (!(ds.v[i] > limit)) continue;
+      if (out.count === 0) out.first = ds.t[i];
+      out.last = ds.t[i];
+      out.count++;
+      if (ds.type[i] === TYPE_MEASURED) out.measured++;
+      else out.computed++;
+      if (ds.v[i] > out.max) {
+        out.max = ds.v[i];
+        out.maxT = ds.t[i];
+      }
+    }
+    return out;
+  }
+
+  // Punkter over grænsen i prognosen
+  function exceedOfForecast(forecast, limit) {
+    const out = { count: 0, first: 0, last: 0, max: -Infinity, maxT: 0 };
+    for (const p of forecast) {
+      if (!(p.v > limit)) continue;
+      if (out.count === 0) out.first = p.t;
+      out.last = p.t;
+      out.count++;
+      if (p.v > out.max) {
+        out.max = p.v;
+        out.maxT = p.t;
+      }
+    }
+    return out;
+  }
+
+  function medianSpacing(ds) {
+    const pairs = Math.min(ds.n - 1, 1000);
+    if (pairs < 1) return MIN15;
+    const gaps = [];
+    for (let k = 0; k < pairs; k++) {
+      const i = Math.floor((k * (ds.n - 1)) / pairs);
+      gaps.push(ds.t[i + 1] - ds.t[i]);
+    }
+    gaps.sort((a, b) => a - b);
+    return gaps[gaps.length >> 1];
+  }
+
+  const CHART_RAW_MAX = 5000; // over det nedsamles serien
+  const CHART_BUCKETS = 2000;
+
+  // Punkter til den målte kurve. Lange serier nedsamles til laveste og højeste værdi pr. tidsinterval,
+  // så spidser bevares. Huller i målingerne giver et brud i linjen (y = null).
+  function chartPoints(ds) {
+    const n = ds.n;
+    const points = [];
+    if (!n) return points;
+
+    const breakGap = Math.max(MIN15, medianSpacing(ds)) * 2.5;
+    const push = (i) => points.push({ x: ds.t[i], y: ds.v[i], k: ds.type[i] });
+    const pushBreak = (i) => points.push({ x: (ds.t[i - 1] + ds.t[i]) / 2, y: null });
+
+    if (n <= CHART_RAW_MAX) {
+      for (let i = 0; i < n; i++) {
+        if (i > 0 && ds.t[i] - ds.t[i - 1] > breakGap) pushBreak(i);
+        push(i);
+      }
+    } else {
+      const t0 = ds.t[0];
+      const width = Math.max(MIN15, (ds.t[n - 1] - t0) / CHART_BUCKETS);
+      const gapLimit = Math.max(breakGap, width);
+      let i = 0;
+      while (i < n) {
+        const bucketEnd = t0 + (Math.floor((ds.t[i] - t0) / width) + 1) * width;
+        let lo = i;
+        let hi = i;
+        let j = i + 1;
+        for (; j < n && ds.t[j] < bucketEnd; j++) {
+          if (ds.v[j] < ds.v[lo]) lo = j;
+          if (ds.v[j] > ds.v[hi]) hi = j;
+        }
+        if (i > 0 && ds.t[i] - ds.t[i - 1] > gapLimit) pushBreak(i);
+        push(Math.min(lo, hi));
+        if (lo !== hi) push(Math.max(lo, hi));
+        i = j;
+      }
+    }
+
+    // Et punkt uden naboer ville ikke kunne ses som linje. Det tegnes som en lille prik.
+    for (let k = 0; k < points.length; k++) {
+      if (points[k].y === null) continue;
+      const before = k === 0 || points[k - 1].y === null;
+      const after = k === points.length - 1 || points[k + 1].y === null;
+      if (before && after) points[k].alone = true;
+    }
+    return points;
+  }
+
+  const MONTHS = ["jan.", "feb.", "mar.", "apr.", "maj", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "dec."];
+
+  // Aksemærker i dansk tid: hele timer, døgn, måneder eller år, alt efter periodens længde.
+  // label er én tekst eller to linjer.
+  function timeTicks(min, max, maxTicks) {
+    const span = max - min;
+    const steps = [];
+    for (const n of [1, 2, 3, 6, 12]) steps.push({ unit: "h", n, ms: n * HOUR });
+    for (const n of [1, 2, 3, 4, 7, 14]) steps.push({ unit: "d", n, ms: n * DAY });
+    for (const n of [1, 3, 6]) steps.push({ unit: "m", n, ms: n * 30.44 * DAY });
+    for (const n of [1, 2, 5, 10, 20, 50]) steps.push({ unit: "y", n, ms: n * 365.25 * DAY });
+    const step = steps.find((s) => span / s.ms <= maxTicks) || steps[steps.length - 1];
+
+    const ticks = [];
+    const add = (value, label) => {
+      if (value < min || value > max) return;
+      if (ticks.length && ticks[ticks.length - 1].value >= value) return;
+      ticks.push({ value, label });
+    };
+    const p = dkParts(min);
+    const dayMonth = (q) => `${p2(q.d)}.${p2(q.m)}.`;
+
+    if (step.unit === "h") {
+      for (let day = 0; ; day++) {
+        const midnight = dkToUtc(p.y, p.m, p.d + day, 0, 0);
+        if (midnight > max) break;
+        for (let hour = 0; hour < 24; hour += step.n) {
+          const t = dkToUtc(p.y, p.m, p.d + day, hour, 0);
+          const q = dkParts(t);
+          const time = `${p2(q.hh)}:${p2(q.mm)}`;
+          add(t, hour === 0 || !ticks.length ? [time, dayMonth(q)] : time);
+        }
+      }
+    } else if (step.unit === "d") {
+      for (let day = 0; ; day++) {
+        const t = dkToUtc(p.y, p.m, p.d + day, 0, 0);
+        if (t > max) break;
+        const q = dkParts(t);
+        const index = Math.round(Date.UTC(q.y, q.m - 1, q.d) / DAY);
+        if (index % step.n !== 0) continue;
+        add(t, !ticks.length || (q.d <= step.n && q.m === 1) ? [dayMonth(q), String(q.y)] : dayMonth(q));
+      }
+    } else if (step.unit === "m") {
+      for (let k = 0; ; k++) {
+        const index = p.y * 12 + (p.m - 1) + k;
+        const y = Math.floor(index / 12);
+        const m = (index % 12) + 1;
+        const t = dkToUtc(y, m, 1, 0, 0);
+        if (t > max) break;
+        if (index % step.n !== 0) continue;
+        add(t, [MONTHS[m - 1], String(y)]);
+      }
+    } else {
+      for (let y = p.y; ; y++) {
+        const t = dkToUtc(y, 1, 1, 0, 0);
+        if (t > max) break;
+        if (y % step.n !== 0) continue;
+        add(t, String(y));
+      }
+    }
+    return ticks;
+  }
+
+  // ====================================================================
   // Siden
   // ====================================================================
 
@@ -596,6 +817,12 @@
     periodOf,
     build15,
     seriesStats,
+    parseForecast,
+    overlapOf,
+    exceedOfSeries,
+    exceedOfForecast,
+    chartPoints,
+    timeTicks,
     offsetMin,
     dkToUtc,
     dkParts,
@@ -643,6 +870,8 @@
     latestError: false,
     limit: null,
     view: null,
+    chart: null,
+    overlay: null,
   };
 
   function el(tag, className, text) {
@@ -810,6 +1039,7 @@
     state.latest = null;
     state.latestRef = null;
     state.view = null;
+    destroyChart();
     $("progress").hidden = true;
   }
 
@@ -1171,6 +1401,15 @@
       if (state.job === job && !job.signal.aborted) $("progress").hidden = false;
     }, 300);
 
+    // Prognosen hentes samtidig med målingerne. Den vises kun, når Til er i dag.
+    const wantForecast = period.toToday && !!station.forecast;
+    const forecastJob = wantForecast
+      ? fetchForecast(station, job.signal).then(
+          (points) => ({ points: points.filter((p) => p.t >= period.start) }),
+          () => ({ points: null })
+        )
+      : null;
+
     try {
       const result = await fetchRange(station, period.start, period.apiEnd, {
         signal: job.signal,
@@ -1182,8 +1421,27 @@
       markFetched();
 
       const ds = build15(result.series, period.start, period.end, Math.min(period.end, now - GAP_GRACE));
-      state.view = { station, period, ds, failed: result.failed, fetchedAt: now };
+      const view = {
+        station,
+        period,
+        ds,
+        failed: result.failed,
+        fetchedAt: now,
+        forecast: null,
+        forecastState: wantForecast ? "loading" : "off",
+      };
+      state.view = view;
       renderView();
+      clearTimeout(state.progressTimer);
+      $("progress").hidden = true;
+
+      if (forecastJob) {
+        const forecast = await forecastJob;
+        if (job.signal.aborted || state.station !== station || state.view !== view) return;
+        view.forecast = forecast.points;
+        view.forecastState = forecast.points && forecast.points.length ? "ok" : "error";
+        renderView();
+      }
     } catch (err) {
       if (state.station !== station) return;
       if (job.signal.aborted) {
@@ -1228,39 +1486,47 @@
     if (!view) return;
     const { station, ds, failed } = view;
     const stats = seriesStats(ds);
+    const hasForecast = !!(view.forecast && view.forecast.length);
 
     $("noteMissing").textContent = failed.length
       ? `DMI svarede ikke for ${failedRanges(failed).join(", ")}. Den periode mangler i graf, tabel og Excel-fil. Tryk "Vis" for at prøve igen.`
       : "";
 
-    if (!stats) {
+    if (stats) {
+      view.summary =
+        `Seneste værdi er ${fmtLevel(stats.last.v)} cm den ${fmtDateTime(stats.last.t)}, ` +
+        `højeste i perioden er ${fmtLevel(stats.max.v)} cm den ${fmtDateTime(stats.max.t)}, ` +
+        `og laveste er ${fmtLevel(stats.min.v)} cm den ${fmtDateTime(stats.min.t)}.`;
+      $("noteSummary").textContent = view.summary;
+      $("noteGaps").textContent =
+        ds.gaps === 0
+          ? ""
+          : ds.gaps === 1
+            ? "1 kvarter uden måling i perioden."
+            : `${fmtCount(ds.gaps)} kvarterer uden måling i perioden.`;
+      renderTable(ds);
+    } else {
       const from = stationFrom(station);
+      view.summary = "";
       showError(
         $("periodError"),
         "Ingen målinger i perioden." + (from ? ` Stationen har data fra ${fmtDateParts(from)}.` : "")
       );
-      $("chartBlock").hidden = true;
-      $("tableBlock").hidden = true;
       $("noteSummary").textContent = "";
       $("noteGaps").textContent = "";
-      $("notes").hidden = !failed.length;
-      return;
+      $("tableBlock").hidden = true;
     }
 
-    view.summary =
-      `Seneste værdi er ${fmtLevel(stats.last.v)} cm den ${fmtDateTime(stats.last.t)}, ` +
-      `højeste i perioden er ${fmtLevel(stats.max.v)} cm den ${fmtDateTime(stats.max.t)}, ` +
-      `og laveste er ${fmtLevel(stats.min.v)} cm den ${fmtDateTime(stats.min.t)}.`;
-    $("noteSummary").textContent = view.summary;
-    $("noteGaps").textContent =
-      ds.gaps === 0
-        ? ""
-        : ds.gaps === 1
-          ? "1 kvarter uden måling i perioden."
-          : `${fmtCount(ds.gaps)} kvarterer uden måling i perioden.`;
+    renderLimitNotes();
+    renderForecastNotes();
     $("notes").hidden = false;
 
-    renderTable(ds);
+    if (stats || hasForecast) {
+      renderChart();
+    } else {
+      destroyChart();
+      $("chartBlock").hidden = true;
+    }
   }
 
   function renderTable(ds) {
@@ -1278,6 +1544,347 @@
       body.append(row);
     }
     $("tableBlock").hidden = false;
+  }
+
+  // ---------- Graf ----------
+
+  const COLOR = {
+    ink: "#0F2D40",
+    muted: "#55687A",
+    line: "#C9D4DB",
+    sea: "#0B6FA4",
+    forecast: "#B5306F",
+    limit: "#C8341F",
+    over: "rgba(200, 52, 31, 0.15)",
+    none: "rgba(0, 0, 0, 0)",
+  };
+  const CHART_FONT = '"Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
+  function limitLabel(limit) {
+    return (limit < 0 ? MINUS : "") + fmtNum(limit);
+  }
+
+  function fmtDistance(km) {
+    return km < 1 ? `${Math.round(km * 1000)} m` : fmtKm(km);
+  }
+
+  // Nullinje, grænselinje og "Nu" tegnes oven på grafen
+  const overlayPlugin = {
+    id: "vandstandOverlay",
+    beforeDatasetsDraw(chart) {
+      const { ctx, chartArea: area, scales } = chart;
+      const y0 = Math.round(scales.y.getPixelForValue(0)) + 0.5;
+      if (y0 < area.top || y0 > area.bottom) return;
+      ctx.save();
+      ctx.strokeStyle = COLOR.ink;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(area.left, y0);
+      ctx.lineTo(area.right, y0);
+      ctx.stroke();
+      ctx.restore();
+    },
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea: area, scales } = chart;
+      const info = state.overlay || {};
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.textBaseline = "alphabetic";
+
+      if (info.limit !== null && info.limit !== undefined) {
+        const yl = Math.round(scales.y.getPixelForValue(info.limit)) + 0.5;
+        if (yl >= area.top && yl <= area.bottom) {
+          ctx.strokeStyle = COLOR.limit;
+          ctx.beginPath();
+          ctx.moveTo(area.left, yl);
+          ctx.lineTo(area.right, yl);
+          ctx.stroke();
+
+          const text = `Grænse ${limitLabel(info.limit)} cm`;
+          ctx.font = `600 14px ${CHART_FONT}`;
+          const ty = yl - area.top > 26 ? yl - 7 : yl + 18;
+          ctx.textAlign = "left";
+          ctx.lineJoin = "round";
+          ctx.strokeStyle = "#FFFFFF"; // hvid kant om bogstaverne, så teksten kan læses oven på kurven
+          ctx.lineWidth = 4;
+          ctx.strokeText(text, area.left + 8, ty);
+          ctx.lineWidth = 1;
+          ctx.fillStyle = COLOR.limit;
+          ctx.fillText(text, area.left + 8, ty);
+        }
+      }
+
+      if (info.now) {
+        const xn = Math.round(scales.x.getPixelForValue(info.now)) + 0.5;
+        if (xn >= area.left && xn <= area.right) {
+          ctx.strokeStyle = COLOR.ink;
+          ctx.beginPath();
+          ctx.moveTo(xn, area.top);
+          ctx.lineTo(xn, area.bottom);
+          ctx.stroke();
+          ctx.font = `600 14px ${CHART_FONT}`;
+          ctx.fillStyle = COLOR.ink;
+          ctx.textAlign = xn > area.right - 24 ? "right" : "center";
+          ctx.fillText("Nu", xn, area.top - 6);
+        }
+      }
+      ctx.restore();
+    },
+  };
+
+  function destroyChart() {
+    if (state.chart) {
+      state.chart.destroy();
+      state.chart = null;
+    }
+  }
+
+  function legendItem(className, text) {
+    const item = el("li");
+    item.append(el("span", "key " + className), el("span", "", text));
+    return item;
+  }
+
+  function renderChart() {
+    const view = state.view;
+    const Chart = window.Chart;
+    if (!view || !Chart) return;
+
+    const limit = state.limit;
+    const hasLimit = limit !== null && Number.isFinite(limit);
+    const measured = chartPoints(view.ds);
+    const forecast = (view.forecast || []).map((p) => ({ x: p.t, y: p.v, k: TYPE_FORECAST }));
+
+    // Forklaringen står som tekst med små linjestykker over grafen
+    const legend = $("legend");
+    legend.textContent = "";
+    legend.append(legendItem("", "Målt (cm DVR90)"));
+    if (forecast.length) legend.append(legendItem("key-forecast", "Prognose (cm, middelvandstand)"));
+    if (hasLimit) legend.append(legendItem("key-limit", "Grænse"));
+
+    // Akser: fra Fra til Til, eller til 5 døgn frem, når prognosen vises
+    const xMin = view.period.start;
+    const xMax = forecast.length ? Math.max(view.period.end, forecast[forecast.length - 1].x) : view.period.end;
+
+    let lo = 0;
+    let hi = 0;
+    for (const p of measured) {
+      if (p.y === null) continue;
+      if (p.y < lo) lo = p.y;
+      if (p.y > hi) hi = p.y;
+    }
+    for (const p of forecast) {
+      if (p.y < lo) lo = p.y;
+      if (p.y > hi) hi = p.y;
+    }
+    if (hasLimit) {
+      lo = Math.min(lo, limit);
+      hi = Math.max(hi, limit);
+    }
+    const margin = Math.max(5, (hi - lo) * 0.06);
+
+    const fill = hasLimit ? { target: { value: limit }, above: COLOR.over, below: COLOR.none } : false;
+    const tickLabels = new Map();
+    const small = smallScreen.matches;
+
+    Chart.defaults.font.family = CHART_FONT;
+    Chart.defaults.font.size = small ? 13 : 14;
+    Chart.defaults.color = COLOR.muted;
+
+    destroyChart();
+    state.overlay = { limit: hasLimit ? limit : null, now: view.period.toToday ? view.fetchedAt : 0 };
+    $("chartBlock").hidden = false;
+    const canvas = $("chart");
+    canvas.setAttribute(
+      "aria-label",
+      `Graf over vandstand ved ${view.station.name}. ${view.summary || "Ingen målinger i perioden."}` +
+        (forecast.length ? " Prognosen vises som stiplet linje de næste fem døgn." : "")
+    );
+
+    state.chart = new Chart(canvas, {
+      type: "line",
+      data: {
+        datasets: [
+          {
+            label: "Målt",
+            data: measured,
+            borderColor: COLOR.sea,
+            backgroundColor: COLOR.sea,
+            borderWidth: 1.5,
+            pointRadius: (c) => (c.raw && c.raw.alone ? 1.5 : 0),
+            pointHoverRadius: 3,
+            pointBorderWidth: 0,
+            pointHitRadius: 6,
+            spanGaps: false,
+            fill,
+          },
+          {
+            label: "Prognose",
+            data: forecast,
+            borderColor: COLOR.forecast,
+            backgroundColor: COLOR.forecast,
+            borderWidth: 1.5,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            pointHoverRadius: 3,
+            pointBorderWidth: 0,
+            pointHitRadius: 6,
+            fill,
+          },
+        ],
+      },
+      options: {
+        parsing: false,
+        normalized: true,
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "nearest", axis: "x", intersect: false },
+        layout: { padding: { top: 24, right: 8 } },
+        scales: {
+          x: {
+            type: "linear",
+            min: xMin,
+            max: xMax,
+            grid: { color: COLOR.line },
+            border: { color: COLOR.line },
+            ticks: {
+              autoSkip: false,
+              maxRotation: 0,
+              callback: (value) => tickLabels.get(value) || "",
+            },
+            afterBuildTicks: (scale) => {
+              const ticks = timeTicks(scale.min, scale.max, Math.max(2, Math.floor(scale.width / (small ? 60 : 104))));
+              tickLabels.clear();
+              for (const t of ticks) tickLabels.set(t.value, t.label);
+              scale.ticks = ticks.map((t) => ({ value: t.value }));
+            },
+          },
+          y: {
+            suggestedMin: lo - margin,
+            suggestedMax: hi + margin,
+            grid: { color: COLOR.line },
+            border: { display: false },
+            ticks: { maxTicksLimit: small ? 7 : 9, callback: (value) => fmtLevel(value) },
+          },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            displayColors: false,
+            backgroundColor: COLOR.ink,
+            titleColor: "#FFFFFF",
+            bodyColor: "#FFFFFF",
+            cornerRadius: 4,
+            padding: 10,
+            titleFont: { weight: "600" },
+            callbacks: {
+              title: (items) => (items.length ? fmtDateTime(items[0].parsed.x) : ""),
+              label: (item) => {
+                const p = item.raw;
+                const over = hasLimit && p.y > limit;
+                if (p.k === TYPE_FORECAST) {
+                  const lines = [`${fmtLevel(p.y)} cm i forhold til middelvandstand, prognose`];
+                  if (over) lines.push("Over grænsen (prognose, andet nulpunkt)");
+                  return lines;
+                }
+                const lines = [`${fmtLevel(p.y)} cm DVR90, ${TYPE_NAMES[p.k]}`];
+                if (over) lines.push("Over grænsen");
+                return lines;
+              },
+            },
+          },
+        },
+      },
+      plugins: [overlayPlugin],
+    });
+  }
+
+  // ---------- Tekster under grafen ----------
+
+  function renderLimitNotes() {
+    const view = state.view;
+    const limit = state.limit;
+    const note = $("noteLimit");
+    const forecastNote = $("noteForecastLimit");
+    note.textContent = "";
+    forecastNote.textContent = "";
+    if (!view || limit === null || !Number.isFinite(limit)) return;
+
+    const text = limitLabel(limit);
+    if (view.ds.n) {
+      const e = exceedOfSeries(view.ds, limit);
+      if (e.count === 0) {
+        note.textContent = `Ingen punkter på den målte kurve ligger over grænsen på ${text} cm.`;
+      } else {
+        note.textContent =
+          `${fmtCount(e.count)} ${e.count === 1 ? "punkt" : "punkter"} på den målte kurve ligger over grænsen på ${text} cm ` +
+          `(${fmtCount(e.measured)} målt, ${fmtCount(e.computed)} beregnet). ` +
+          `Første ${fmtDateTime(e.first)}, seneste ${fmtDateTime(e.last)}. ` +
+          `Højeste værdi ${fmtLevel(e.max)} cm den ${fmtDateTime(e.maxT)}.`;
+      }
+    }
+
+    if (view.forecast && view.forecast.length) {
+      const f = exceedOfForecast(view.forecast, limit);
+      forecastNote.textContent =
+        f.count === 0
+          ? "Ingen prognosepunkter ligger over grænsen (prognose, andet nulpunkt)."
+          : `${fmtCount(f.count)} ${f.count === 1 ? "prognosepunkt" : "prognosepunkter"} ligger over grænsen (prognose, andet nulpunkt). ` +
+            `Første ${fmtDateTime(f.first)}, seneste ${fmtDateTime(f.last)}. ` +
+            `Højeste værdi ${fmtLevel(f.max)} cm den ${fmtDateTime(f.maxT)}.`;
+    }
+  }
+
+  function renderForecastNotes() {
+    const view = state.view;
+    const note = $("noteForecast");
+    const overlapNote = $("noteOverlap");
+    note.classList.remove("msg-error");
+    note.textContent = "";
+    overlapNote.textContent = "";
+    if (!view) return;
+
+    const station = view.station;
+    if (!station.forecast) {
+      note.textContent = "Ingen prognose for denne station.";
+      return;
+    }
+    if (view.forecastState === "off") {
+      note.textContent = "Prognosen vises, når Til er i dag.";
+      return;
+    }
+    if (view.forecastState === "loading") {
+      note.textContent = "Henter prognose fra DMI …";
+      return;
+    }
+    if (view.forecastState === "error" || !view.forecast || !view.forecast.length) {
+      note.textContent = 'Prognosen kunne ikke hentes fra DMI lige nu. Tryk "Vis" for at prøve igen.';
+      note.classList.add("msg-error");
+      return;
+    }
+
+    const f = station.forecast;
+    const km = haversineKm(station.lat, station.lon, f.lat, f.lon);
+    const last = view.forecast[view.forecast.length - 1].t;
+    note.textContent =
+      `Prognosen er fra DMI's stormflodsmodel DKSS (${f.model}) i et modelpunkt ${fmtDistance(km)} fra stationen ` +
+      `og går til ${fmtDateTime(last)}.` +
+      (km > 5 ? " Modelpunktet ligger langt fra stationen, så prognosen kan afvige meget fra vandstanden her." : "");
+
+    const o = overlapOf(view.ds, view.forecast);
+    const basis = " Måling er i DVR90, prognose er afvigelse fra middelvandstand. Prognosen er ikke justeret.";
+    if (o.n === 0) {
+      overlapNote.textContent = "Der er endnu ingen timer med både måling og prognose, så forskellen kan ikke beregnes." + basis;
+      return;
+    }
+    const mean = Math.round(o.mean);
+    const hours = o.n === 1 ? "den seneste time" : `de seneste ${o.n} timer`;
+    const how =
+      mean === 0
+        ? "Målingen lå i gennemsnit under 1 cm fra prognosen"
+        : `Målingen lå i gennemsnit ${Math.abs(mean)} cm ${mean > 0 ? "over" : "under"} prognosen`;
+    overlapNote.textContent = `${how} ${hours} med både måling og prognose.` + basis;
   }
 
   // ---------- Start ----------
@@ -1325,8 +1932,19 @@
       if (!document.hidden && state.station && Date.now() - (state.latestAt || 0) >= LIVE_EVERY) refreshLatest();
     });
     smallScreen.addEventListener("change", () => {
-      if (state.station) renderGauge();
+      if (!state.station) return;
+      renderGauge();
+      renderView();
     });
+
+    // Grafens tekster tegnes på et canvas. Tegn igen, når skriften er hentet.
+    if (document.fonts && document.fonts.load) {
+      Promise.all([document.fonts.load('400 14px "Source Sans 3"'), document.fonts.load('600 14px "Source Sans 3"')])
+        .then(() => {
+          if (state.chart) state.chart.update();
+        })
+        .catch(() => {});
+    }
 
     loadLists()
       .then(() => {

@@ -529,7 +529,7 @@ input[type="text"]::placeholder {
 }
 
 .key-limit {
-  border-top: 1px solid var(--graense);
+  border-top: 2px solid var(--graense);
 }
 
 .chart-box {
