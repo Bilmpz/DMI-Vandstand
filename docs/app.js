@@ -192,44 +192,188 @@
     return 2 * R * Math.asin(Math.sqrt(a));
   }
 
-  const NUMERALS = { I: 1, II: 2, III: 3 };
+  // ---------- Måleserier: parameter, nulpunkt og enhed ----------
 
+  const STATUS_ACTIVE = "aktiv";
+  const OWNER_KYST = "Kystdirektoratet";
+  const OWNER_ORDER = ["DMI", "Kystdirektoratet", "Havn/kommune", "Ikke oplyst"];
+  const PLACE_KM = 3; // stationer med samme navn under 3 km fra hinanden er ét sted
+
+  // Nulpunktet for én måleserie (station × parameter)
+  function datumOf(owner, parameter) {
+    if (parameter === "sealev_dvr") return "DVR90";
+    if (parameter === "sealev_ln") return "lokalt nulpunkt";
+    if (parameter === "sea_reg") return owner === OWNER_KYST ? "DVR90 ifølge DMI" : "nulpunkt ikke dokumenteret";
+    if (parameter === "tw") return "°C, vandtemperatur";
+    return "ikke dokumenteret";
+  }
+
+  function isTemperature(series) {
+    return series.parameter === "tw";
+  }
+
+  function isDvr90(series) {
+    return series.datum === "DVR90" || series.datum === "DVR90 ifølge DMI";
+  }
+
+  // "cm" eller "°C"
+  function unitShort(series) {
+    return isTemperature(series) ? "°C" : "cm";
+  }
+
+  // Enhed med nulpunkt. Kun serier, der er i DVR90, får "DVR90".
+  function unitLabel(series) {
+    if (isTemperature(series)) return "°C";
+    if (isDvr90(series)) return "cm DVR90";
+    return "cm, " + series.datum;
+  }
+
+  function seriesName(series) {
+    return `${series.id} ${series.parameter}`;
+  }
+
+  // Vandstand med fortegn (+22, −5). Temperatur uden plus.
+  function fmtValue(series, v) {
+    if (!isTemperature(series)) return fmtLevel(v);
+    const r = round1(v);
+    return (r < 0 ? MINUS : "") + fmtNum(r);
+  }
+
+  // ---------- Steder ----------
+
+  const NUMERALS = { I: 1, II: 2, III: 3 };
+  const NAME_SUFFIX = /\s+(III|II|I|\(old\))$/i;
+
+  // Navnet uden " I", " II", " III" og " (Old)" til sidst
   function baseName(name) {
-    return name.replace(/\s+(III|II|I)$/, "");
+    let n = String(name).trim();
+    for (;;) {
+      const m = n.replace(NAME_SUFFIX, "");
+      if (m === n) return n;
+      n = m;
+    }
+  }
+
+  function placeKey(name) {
+    return baseName(name).toLocaleLowerCase("da");
   }
 
   function numeral(name) {
-    const m = /\s+(III|II|I)$/.exec(name);
+    const m = /\s+(III|II|I)$/.exec(String(name).trim());
     return m ? NUMERALS[m[1]] : 0;
   }
 
-  // Et sted er stationer med samme ejer, samme navn uden I/II/III til sidst og under 1 km fra hinanden.
-  function buildPlaces(stations) {
-    const places = [];
-    for (const s of stations) {
-      const base = baseName(s.name);
-      let place = places.find(
-        (p) =>
-          p.owner === s.owner &&
-          p.base === base &&
-          p.stations.some((o) => haversineKm(o.lat, o.lon, s.lat, s.lon) < 1)
-      );
-      if (!place) {
-        place = { owner: s.owner, base, stations: [] };
-        places.push(place);
-      }
-      place.stations.push(s);
-    }
-    for (const p of places) {
-      p.stations.sort((a, b) => numeral(a.name) - numeral(b.name) || (a.id < b.id ? -1 : 1));
-      p.main = p.stations[0]; // laveste nummerering er standard
-    }
-    return places;
+  // Aktive stationer først, derefter laveste nummerering og station-id
+  function stationOrder(a, b) {
+    return (
+      (b.status === STATUS_ACTIVE) - (a.status === STATUS_ACTIVE) ||
+      numeral(a.name) - numeral(b.name) ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+    );
   }
 
-  function nearestPlaces(places, lat, lon, count) {
+  // Én måleserie pr. parameter. Serien har stationens felter med, så den kan bruges som en station.
+  function seriesOf(station) {
+    return (station.parameters || []).map((parameter) => ({
+      key: station.id + ":" + parameter,
+      id: station.id,
+      parameter,
+      station,
+      datum: datumOf(station.owner, parameter),
+      active: station.status === STATUS_ACTIVE,
+      name: station.name,
+      owner: station.owner,
+      lat: station.lat,
+      lon: station.lon,
+      from: station.from,
+      to: station.to || null,
+      forecast: station.forecast || null,
+    }));
+  }
+
+  // Hovedserien: sealev_dvr, sea_reg fra Kystdirektoratet, sea_reg fra andre, sealev_ln
+  function mainRank(series) {
+    if (series.parameter === "sealev_dvr") return 0;
+    if (series.parameter === "sea_reg") return series.owner === OWNER_KYST ? 1 : 2;
+    if (series.parameter === "sealev_ln") return 3;
+    return 4;
+  }
+
+  function makePlace(members) {
+    const stations = members.slice().sort(stationOrder);
+    const all = [].concat(...stations.map(seriesOf));
+    const active = all.filter((s) => s.active);
+    // Blandt aktive stationer. Har stedet ingen, vælges blandt de nedlagte, nyeste først.
+    const pool = active.length ? active : all;
+    const main =
+      pool.slice().sort(
+        (a, b) =>
+          mainRank(a) - mainRank(b) ||
+          String(b.to || "").localeCompare(String(a.to || "")) ||
+          stationOrder(a.station, b.station)
+      )[0] || null;
+    const series = main ? [main].concat(all.filter((s) => s !== main)) : all;
+
+    const owners = [];
+    for (const o of OWNER_ORDER) if (stations.some((s) => s.owner === o)) owners.push(o);
+    for (const s of stations) if (!owners.includes(s.owner)) owners.push(s.owner);
+
+    let from = null;
+    let to = null;
+    for (const s of stations) {
+      if (s.from && (!from || s.from < from)) from = s.from;
+      if (s.to && (!to || s.to > to)) to = s.to;
+    }
+    const anchor = main ? main.station : stations[0];
+    return {
+      name: baseName(anchor.name),
+      stations,
+      series,
+      main,
+      owners,
+      active: active.length > 0,
+      from,
+      to: active.length ? null : to,
+      lat: anchor.lat,
+      lon: anchor.lon,
+    };
+  }
+
+  // Et sted er alle stationer med samme navn og under 3 km fra hinanden, på tværs af ejer og status.
+  // Navnene sammenlignes uden store/små bogstaver og uden " I", " II", " III" og " (Old)" til sidst.
+  function buildPlaces(stations) {
+    const n = stations.length;
+    const parent = Array.from({ length: n }, (_, i) => i);
+    const find = (i) => {
+      while (parent[i] !== i) {
+        parent[i] = parent[parent[i]];
+        i = parent[i];
+      }
+      return i;
+    };
+    const keys = stations.map((s) => placeKey(s.name));
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        if (keys[i] !== keys[j]) continue;
+        const a = stations[i];
+        const b = stations[j];
+        if (haversineKm(a.lat, a.lon, b.lat, b.lon) < PLACE_KM) parent[find(i)] = find(j);
+      }
+    }
+    const groups = new Map();
+    stations.forEach((s, i) => {
+      const root = find(i);
+      if (!groups.has(root)) groups.set(root, []);
+      groups.get(root).push(s);
+    });
+    return Array.from(groups.values(), makePlace);
+  }
+
+  // De nærmeste steder. Uden withClosed kun steder med mindst én aktiv station.
+  function nearestPlaces(places, lat, lon, count, withClosed) {
     return places
-      .map((place) => ({ place, km: haversineKm(lat, lon, place.main.lat, place.main.lon) }))
+      .filter((place) => withClosed || place.active)
+      .map((place) => ({ place, km: haversineKm(lat, lon, place.lat, place.lon) }))
       .sort((a, b) => a.km - b.km)
       .slice(0, count);
   }
@@ -850,24 +994,24 @@
   // Excel-fil: CSV med semikolon, decimalkomma, CRLF og UTF-8 med BOM
   // ====================================================================
 
-  // Stationer ejet af havne og kommuner måler sea_reg, men DMI dokumenterer ikke nulpunktet.
-  const OWNER_HARBOUR = "Havn/kommune";
-
-  function datumKnown(station) {
-    return !station || station.owner !== OWNER_HARBOUR;
+  // Midlertidigt: stationsvisningen viser hovedserien. Kun serier i DVR90 får "DVR90".
+  function datumKnown(series) {
+    return !series || isDvr90(series);
   }
 
-  // Enheden for målt vandstand: "cm DVR90", eller "cm", når nulpunktet ikke er dokumenteret
-  function levelUnit(station) {
-    return datumKnown(station) ? "cm DVR90" : "cm";
+  function levelUnit(series) {
+    return series ? unitLabel(series) : "cm";
   }
 
-  const CSV_HEADER = "Tid UTC;Tid dansk;Vandstand cm DVR90;Type;qcStatus;Prognose cm (middelvandstand)";
-  const CSV_HEADER_NO_DATUM =
-    "Tid UTC;Tid dansk;Vandstand cm (nulpunkt ikke dokumenteret);Type;qcStatus;Prognose cm (middelvandstand)";
-
-  function csvHeader(station) {
-    return datumKnown(station) ? CSV_HEADER : CSV_HEADER_NO_DATUM;
+  // Overskrift: Tid UTC; Tid dansk; for hver serie værdi, type og qcStatus; prognose
+  function csvHeader(list) {
+    const cols = ["Tid UTC", "Tid dansk"];
+    for (const s of Array.isArray(list) ? list : [list]) {
+      const name = seriesName(s);
+      cols.push(`${name} (${s.datum})`, `${name} type`, `${name} qcStatus`);
+    }
+    cols.push("Prognose cm (middelvandstand)");
+    return cols.join(";");
   }
   const CSV_MAX_ROWS = 1000000; // Excel kan højst vise 1.048.576 rækker
   const CRLF = "\r\n";
@@ -987,11 +1131,6 @@
     exceedOfForecast,
     chartPoints,
     timeTicks,
-    CSV_HEADER,
-    CSV_HEADER_NO_DATUM,
-    OWNER_HARBOUR,
-    datumKnown,
-    levelUnit,
     csvHeader,
     csvBlocks,
     csvParts,
@@ -1011,7 +1150,13 @@
     fmtCount,
     haversineKm,
     baseName,
+    placeKey,
     numeral,
+    datumOf,
+    unitLabel,
+    unitShort,
+    fmtValue,
+    seriesOf,
     buildPlaces,
     nearestPlaces,
   };
@@ -1074,13 +1219,13 @@
       getJsonRetry(POSTNR_URL, undefined, [800, 2500]),
     ]);
 
-    state.stations = stationsFile.stations || [];
+    state.stations = (stationsFile.stations || []).filter((st) => Number.isFinite(st.lat) && Number.isFinite(st.lon));
     state.postnumre = postnumre;
     state.places = buildPlaces(state.stations);
     for (const place of state.places) {
-      for (const s of place.stations) {
-        state.byId.set(s.id, s);
-        state.placeOf.set(s.id, place);
+      for (const st of place.stations) {
+        state.byId.set(st.id, st);
+        state.placeOf.set(st.id, place);
       }
     }
 
@@ -1102,24 +1247,25 @@
       fra: q.get("fra"),
       til: q.get("til"),
       graense: q.get("graense"),
+      nedlagte: q.get("nedlagte") === "1",
     };
   }
 
   function route() {
     const h = readHash();
     if (h.station) {
-      const station = state.byId.get(h.station);
-      if (station) return showStation(station, h);
+      const place = state.placeOf.get(h.station);
+      if (place && place.main) return showStation(place.main, h);
       showSearch(null);
       showError($("searchError"), `Station ${h.station} findes ikke i stationslisten. Søg på et postnummer i stedet.`);
       return;
     }
-    showSearch(h.postnr);
+    showSearch(h.postnr, h.nedlagte);
   }
 
   // ---------- Søgning ----------
 
-  function showSearch(postnr) {
+  function showSearch(postnr, withClosed) {
     leaveStation();
     $("viewStation").hidden = true;
     $("viewSearch").hidden = false;
@@ -1131,10 +1277,14 @@
       return;
     }
     $("postnr").value = postnr;
-    runSearch(postnr);
+    runSearch(postnr, withClosed);
   }
 
-  function runSearch(postnr) {
+  function placeHref(place) {
+    return "#station=" + encodeURIComponent((place.main ? place.main.station : place.stations[0]).id);
+  }
+
+  function runSearch(postnr, withClosed) {
     if (state.searchJob) state.searchJob.abort();
     $("results").hidden = true;
 
@@ -1145,53 +1295,73 @@
     }
 
     state.lastPostnr = postnr;
-    const nearest = nearestPlaces(state.places, hit.lat, hit.lon, 5);
-    $("resultsTitle").textContent = `Nærmeste målestationer ved ${postnr} ${hit.navn || ""}`.trim();
+    state.lastWithClosed = !!withClosed;
+    const nearest = nearestPlaces(state.places, hit.lat, hit.lon, 5, withClosed);
+    $("resultsTitle").textContent = `Nærmeste steder ved ${postnr} ${hit.navn || ""}`.trim();
 
     const list = $("resultRows");
     list.textContent = "";
     const rows = nearest.map(({ place, km }) => {
-      const s = place.main;
       const link = el("a", "row");
-      link.href = "#station=" + encodeURIComponent(s.id);
+      link.href = placeHref(place);
+
+      const count = place.series.length;
+      const from = parseIsoDate(place.from);
+      const title = el("span", "row-title");
+      title.append(
+        el("span", "row-name", place.name),
+        el("span", "row-sub", `${count} ${count === 1 ? "måleserie" : "måleserier"}` + (from ? `, data fra ${from.y}` : ""))
+      );
 
       const meta = el("span", "row-meta");
       const time = el("span", "row-time");
-      meta.append(el("span", "row-owner", s.owner), el("span", "row-dist", fmtKm(km)), time);
-      const value = el("span", "row-value", "Henter …");
-      link.append(el("span", "row-name", s.name), meta, value);
+      meta.append(el("span", "row-owner", place.owners.join(", ")), el("span", "row-dist", fmtKm(km)), time);
+      const value = el("span", "row-value", place.active ? "Henter …" : "");
+      if (!place.active) {
+        const to = parseIsoDate(place.to);
+        value.textContent = "Nedlagt" + (to ? `, data til ${fmtDateParts(to)}` : "");
+        value.classList.add("is-wide");
+      }
+      link.append(title, meta, value);
 
       const item = el("li");
       item.append(link);
       list.append(item);
-      return { station: s, value, time };
+      return { place, series: place.main, value, time };
     });
+
+    const toggle = $("closedToggle");
+    toggle.textContent = withClosed ? "Vis kun steder med aktive stationer" : "Vis også nedlagte steder";
     $("results").hidden = false;
 
-    // Seneste måling hentes live for de fem.
+    // Seneste måling i hovedserien hentes live for de aktive steder.
     const job = new AbortController();
     state.searchJob = job;
-    pool(rows, 3, async (row) => {
-      try {
-        const latest = await fetchLatest(row.station, job.signal);
-        if (job.signal.aborted) return;
-        markFetched();
-        if (!latest) {
-          row.value.textContent = "Ingen måling hos DMI";
+    pool(
+      rows.filter((row) => row.place.active && row.series),
+      3,
+      async (row) => {
+        try {
+          const latest = await fetchLatest(row.series, job.signal);
+          if (job.signal.aborted) return;
+          markFetched();
+          if (!latest) {
+            row.value.textContent = "Ingen måling hos DMI";
+            row.value.classList.add("is-wide");
+          } else if (Date.now() - latest.t > STALE_AFTER) {
+            row.value.textContent = `Ingen ny måling siden ${fmtDateTime(latest.t)}`;
+            row.value.classList.add("is-wide");
+          } else {
+            row.value.textContent = `${fmtValue(row.series, latest.v)} ${unitShort(row.series)}`;
+            row.time.textContent = fmtDateTime(latest.t);
+          }
+        } catch (err) {
+          if (job.signal.aborted) return;
+          row.value.textContent = "DMI svarer ikke lige nu";
           row.value.classList.add("is-wide");
-        } else if (Date.now() - latest.t > STALE_AFTER) {
-          row.value.textContent = `Ingen ny måling siden ${fmtDateTime(latest.t)}`;
-          row.value.classList.add("is-wide");
-        } else {
-          row.value.textContent = `${fmtLevel(latest.v)} cm`;
-          row.time.textContent = fmtDateTime(latest.t);
         }
-      } catch (err) {
-        if (job.signal.aborted) return;
-        row.value.textContent = "DMI svarer ikke lige nu";
-        row.value.classList.add("is-wide");
       }
-    }).catch(() => {});
+    ).catch(() => {});
   }
 
   // ---------- Station ----------
@@ -1224,8 +1394,10 @@
     return parseIsoDate(station.from);
   }
 
+  // De seneste 7 døgn. For en nedlagt serie de sidste 7 døgn med data.
   function defaultPeriod(station) {
-    const til = todayDk();
+    const to = station.to ? parseIsoDate(station.to) : null;
+    const til = to && compareDates(to, todayDk()) < 0 ? to : todayDk();
     let fra = addDays(til, -7);
     const from = stationFrom(station);
     if (from && compareDates(fra, from) < 0) fra = from;
@@ -1264,8 +1436,8 @@
     const place = state.placeOf.get(station.id);
     const box = $("stSensors");
     box.textContent = "";
-    box.hidden = !place || place.stations.length < 2;
-    if (box.hidden) return;
+    box.hidden = true; // stedets måleserier vises i tabellen "Måleserier"
+    if (box.hidden || !place) return;
 
     box.append(el("span", "", `Stedet har ${place.stations.length} målere`));
     for (const s of place.stations) {
@@ -1287,7 +1459,9 @@
     $("viewSearch").hidden = true;
     $("viewStation").hidden = false;
     document.title = `${station.name} – DMI Vandstand`;
-    $("backLink").href = state.lastPostnr ? "#postnr=" + state.lastPostnr : "#";
+    $("backLink").href = state.lastPostnr
+      ? "#postnr=" + state.lastPostnr + (state.lastWithClosed ? "&nedlagte=1" : "")
+      : "#";
 
     $("stName").textContent = station.name;
     $("tableUnit").textContent = "Vandstand " + levelUnit(station);
@@ -1323,7 +1497,7 @@
     $("stSource").textContent =
       (station.owner === "DMI"
         ? "Kilde til målingerne: DMI."
-        : station.owner === OWNER_HARBOUR
+        : station.owner === "Havn/kommune"
           ? "Kilde til målingerne: DMI og havnen eller kommunen, som ejer stationen."
           : `Kilde til målingerne: DMI og ${station.owner}, som ejer stationen.`) +
       " Kilde til prognosen: DMI's stormflodsmodel DKSS.";
@@ -2166,6 +2340,13 @@
       runPeriod({ excel: false });
     });
     $("excelBtn").addEventListener("click", () => runPeriod({ excel: true }));
+    $("closedToggle").addEventListener("click", () => {
+      if (!state.lastPostnr) return;
+      const q = new URLSearchParams();
+      q.set("postnr", state.lastPostnr);
+      if (!state.lastWithClosed) q.set("nedlagte", "1");
+      location.hash = "#" + q.toString();
+    });
     $("stopBtn").addEventListener("click", stopJob);
     $("shortcuts").addEventListener("click", (event) => {
       const range = event.target && event.target.getAttribute && event.target.getAttribute("data-range");

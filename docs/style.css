@@ -276,6 +276,22 @@ input[type="text"]::placeholder {
   text-underline-offset: 3px;
 }
 
+.row-title {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.row-title .row-name {
+  display: block;
+}
+
+.row-sub {
+  display: block;
+  font-size: 14px;
+  color: var(--daempet);
+}
+
 .row-meta {
   display: contents;
 }
@@ -304,6 +320,10 @@ input[type="text"]::placeholder {
 .row-value,
 .row-time {
   grid-row: 1;
+}
+
+.more {
+  margin-top: 8px;
 }
 
 .row-value.is-wide {
@@ -663,7 +683,7 @@ footer p + p {
     padding: 12px 0;
   }
 
-  .row-name {
+  .row-title {
     grid-column: 1;
     grid-row: 1;
   }
