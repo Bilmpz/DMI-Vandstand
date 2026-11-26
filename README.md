@@ -67,7 +67,8 @@ Tallene er målt mod DMI's API den dag, version 1.0 blev bygget.
 - DKSS-modellernes gitter fra finest til grovest: `dkss_lf` ca. 170 x 185 m, `dkss_lb` og `dkss_if` ca. 175 x 309 m, `dkss_idw` ca. 877 x 927 m, `dkss_ws` ca. 1,8 km og `dkss_nsbs` ca. 5,2 x 5,6 km.
 - Tre måneders målinger for Københavns Havn (30336) er 12.747 rækker og 3,7 MB JSON og tog 1,0 sekund. Et år er 51.604 rækker og 15,0 MB og tog 2,7 til 3,9 sekunder.
 - Perioden hentes i kalenderkvartaler med 3 kald ad gangen. Tre år tog 4,9 sekunder i kvartaler, 6,3 i halvår og 6,6 i hele år.
-- "Alt" for Københavns Havn (fra 24.06.1999) tog ca. 40 sekunder. Excel-filen fik 906.429 rækker og fylder 45,7 MB.
+- "Alt" for Københavns Havn (fra 24.06.1999) tog 40 sekunder på den deployede side. Excel-filen fik 906.429 rækker og fylder 45,7 MB.
+- "Alt" for Thyborøn Havn (fra 03.10.1990) tog 47 sekunder og gav 1.228.201 rækker. Filen blev delt i to: 1990 til 2018 med 972.662 rækker og 2019 til 2026 med 255.539 rækker.
 - Alle tre endpoints svarer med `Access-Control-Allow-Origin: *`, så browseren kan kalde dem direkte.
 
 ## Kør lokalt
