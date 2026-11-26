@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DMI Vandstand</title>
-  <meta name="description" content="Find vandstand ved dit postnummer: seneste måling, historik og DMI's prognose. Hent det hele som en fil til Excel.">
+  <meta name="description" content="Find vandstand ved dit postnummer: alle DMI's måleserier med hele historikken, seneste måling og DMI's prognose. Hent det hele som en fil til Excel.">
   <link rel="icon" type="image/png" href="BA.png">
   <link rel="preload" href="fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
@@ -26,7 +26,7 @@
       <div class="band">
         <div class="wrap">
           <h1 id="searchTitle" tabindex="-1">Find vandstand ved dit postnummer</h1>
-          <p class="lead">Se de fem nærmeste målestationer med seneste måling. Vælg en station for at se vandstanden over tid og DMI's prognose, og hent det hele til Excel.</p>
+          <p class="lead">Se de fem nærmeste steder med seneste måling. Hvert sted viser alle DMI's måleserier med hele historikken, også fra nedlagte stationer. Vælg en serie for at se den over tid sammen med DMI's prognose, og hent serierne til Excel.</p>
           <form id="searchForm" class="search" novalidate>
             <div class="field">
               <label for="postnr">Postnummer</label>
@@ -178,9 +178,9 @@
 
   <footer>
     <div class="wrap">
-      <p>Kilde: DMI. Målinger af vandstand kommer fra DMI, Kystdirektoratet og havne/kommuner og hentes fra DMI's Frie Data under licensen <a href="https://creativecommons.org/licenses/by/4.0/legalcode.da" rel="noopener">CC BY 4.0</a>. Værdier mærket "beregnet" er baseret på data fra DMI og efterfølgende bearbejdet. Prognosen kommer fra DMI's stormflodsmodel DKSS. Postnumre kommer fra <a href="https://www.geonames.org/" rel="noopener">GeoNames</a> (CC BY 4.0).</p>
+      <p>Kilde: DMI. Målingerne kommer fra DMI, Kystdirektoratet og havne/kommuner via DMI's Frie Data under licensen <a href="https://creativecommons.org/licenses/by/4.0/legalcode.da" rel="noopener">CC BY 4.0</a>. Værdier mærket "beregnet" er baseret på data fra DMI og efterfølgende bearbejdet. Prognosen kommer fra DMI's stormflodsmodel DKSS. Postnumre kommer fra <a href="https://www.geonames.org/" rel="noopener">GeoNames</a> (CC BY 4.0).</p>
       <p id="fetchedLine"></p>
-      <p class="foot-row"><span>DMI Vandstand v1.1</span><span>Made by Oliver Lobel</span></p>
+      <p class="foot-row"><span>DMI Vandstand v2.0</span><span>Made by Oliver Lobel</span></p>
     </div>
   </footer>
 

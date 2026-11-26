@@ -1,4 +1,4 @@
-/* DMI Vandstand v1.0. Ingen byggeværktøjer og ingen frameworks. */
+/* DMI Vandstand v2.0. Ingen byggeværktøjer og ingen frameworks. */
 (function (root) {
   "use strict";
 
