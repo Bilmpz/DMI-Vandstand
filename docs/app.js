@@ -10,8 +10,8 @@
   const SMHI_ARCHIVE_URL = "https://opendata-download-ocobs.smhi.se/api/version/1.0/parameter";
   const PEGEL_URL = "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations";
   const OPENMETEO_URL = "https://marine-api.open-meteo.com/v1/marine";
-  const TIDE_FROM = "2026-01-01"; // DMI's tidevand findes fra 2026 (målt 26.11.2026)
-  const OPENMETEO_FROM = "2022-10-01"; // Open-Meteo marine har vandstand tilbage til ca. efteråret 2022
+  const TIDE_FROM = "2025-12-31"; // DMI's tidevand findes fra 31.12.2025 (målt 26.11.2026)
+  const OPENMETEO_FROM = "2022-11-23"; // Open-Meteo marine har vandstand fra 23.11.2022 (målt 26.11.2026)
   const PEGEL_DAYS = 30; // PEGELONLINE har kun ca. 30 dage tilbage
 
   const MIN = 60000;
@@ -2913,7 +2913,8 @@
       renderTable(view);
     } else {
       view.summary = "";
-      if (series) {
+      // Svarede kilden ikke, står det i noteMissing. Så skrives der ikke også "Ingen målinger".
+      if (series && !failed.length) {
         const what = isMeasured(series) ? "målinger" : "værdier";
         showError(
           $("periodError"),
