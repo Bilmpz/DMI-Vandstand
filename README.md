@@ -94,6 +94,8 @@ Filnavn: `vandstand_{sted}_{antal}-serier_{15min|raa}_{fra}_{til}.csv`, fx `vand
 - 157 stationer er aktive, og 21 er nedlagte. Pr. ejer: DMI 58 aktive og 21 nedlagte, Kystdirektoratet 48 aktive, Havn/kommune 50 aktive og Ikke oplyst 1 aktiv (28068 ODENSE FJORD).
 - 22 records har status Inactive, men kun 21 stationer er nedlagte. Station 28086 har en gammel record som "ODENSE FJORD" uden ejer, men den gældende record er aktiv og hedder "Odense Kanal Stige Ø" med ejer "Kommuner/Havne".
 - Stationerne har 315 måleserier: `sea_reg` på 178 stationer, `tw` på 68, `sealev_dvr` på 36 og `sealev_ln` på 33.
+- 155 af de 157 aktive stationer har et prognosepunkt: 91 i `dkss_idw`, 17 i `dkss_nsbs`, 16 i `dkss_ws`, 13 i `dkss_lf`, 9 i `dkss_lb` og 9 i `dkss_if`. Bork Havn og Felsted Kog/Klosterhul har stadig ingen prognose. Nedlagte stationer får ikke et prognosepunkt.
+- De 54 nye prognosepunkter tog ca. 1 time og 255 kald, fordi DMI's prognose-API svarede 429 eller brugte op til 18 sekunder pr. kald. En almindelig kørsel genbruger alle punkter og bruger 2 kald.
 - Stationerne udgør 111 steder. 110 har mindst én aktiv station. Kun Nordre Røse Fyr har udelukkende en nedlagt station.
 - Steder med mere end 3 stationer: Esbjerg Havn (6), Københavns Havn (6), Hirtshals Havn (4) og Slipshavn (4).
 - API'et har data helt tilbage: Esbjerg Havn 25148 `sealev_ln` fra 01.01.1889 kl. 00:00 UTC, Hornbæk Havn 30018 `sealev_ln` og `sea_reg` fra 01.01.1891 og Gedser Havn 31618 `sealev_ln` fra 01.09.1891. De gamle målinger er timeværdier med `qcStatus` "manual".
