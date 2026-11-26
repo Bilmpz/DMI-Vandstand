@@ -151,6 +151,22 @@ input[type="text"] {
   font-variant-numeric: tabular-nums;
 }
 
+select {
+  width: 100%;
+  height: 48px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--blaek);
+  border-radius: 4px;
+  background: var(--papir)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%230F2D40' stroke-width='2'/%3E%3C/svg%3E")
+    no-repeat right 12px center;
+  color: var(--blaek);
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
 input[type="text"]::placeholder {
   color: var(--daempet);
   opacity: 1;
@@ -492,7 +508,11 @@ input[type="text"]::placeholder {
 }
 
 .controls .field-limit {
-  width: 208px;
+  width: 176px;
+}
+
+.controls .field-res {
+  width: 176px;
 }
 
 .shortcuts {
@@ -802,7 +822,10 @@ footer p + p {
     width: auto;
   }
 
-  .controls .field-limit,
+  .controls .field-res {
+    width: auto;
+  }
+
   .controls .btn {
     grid-column: 1 / 3;
   }

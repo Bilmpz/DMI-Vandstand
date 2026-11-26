@@ -755,6 +755,23 @@
     return { t: t.subarray(0, n), v: v.subarray(0, n), type: type.subarray(0, n), q: q.subarray(0, n), n, gaps };
   }
 
+  // Rå målinger i perioden: alle målte tidspunkter og ingen beregnede værdier. Type er altid "målt".
+  function buildRaw(obs, startMs, endMs) {
+    let a = 0;
+    while (a < obs.n && obs.t[a] < startMs) a++;
+    let b = a;
+    while (b < obs.n && obs.t[b] <= endMs) b++;
+    const n = b - a;
+    return {
+      t: obs.t.subarray(a, b),
+      v: obs.v.subarray(a, b),
+      type: new Uint8Array(n).fill(TYPE_MEASURED),
+      q: obs.q.subarray(a, b),
+      n,
+      gaps: 0,
+    };
+  }
+
   // Seneste, højeste og laveste værdi i datasættet
   function seriesStats(ds) {
     if (!ds.n) return null;
@@ -1022,8 +1039,12 @@
   }
 
   // Rækkerne som tekst, samlet i blokke pr. dansk kalenderår: [{ year, rows, text }].
+  // Én række pr. tidspunkt. For hver serie tre kolonner: værdi, type og qcStatus.
   // Prognosen står i sin egen kolonne på hele timer. Efter seneste måling kommer kun rækker med type "prognose".
-  function csvBlocks(ds, forecast, qcNames) {
+  function csvBlocks(list, forecast, qcNames) {
+    const sets = Array.isArray(list) ? list : [list];
+    const K = sets.length;
+    const idx = new Array(K).fill(0);
     const blocks = [];
     let year = null;
     let lines = [];
@@ -1041,18 +1062,40 @@
       }
       lines.push(stamp(ms) + ";" + stamp(local) + ";" + rest);
     };
-    const forecastOnly = (p) => add(p.t, ";prognose;;" + csvNum(p.v));
+    // Rækker kun med prognose: "prognose" står i den første series type-kolonne
+    const emptyRest = ";;;".repeat(Math.max(0, K - 1));
+    const forecastOnly = (p) => add(p.t, ";prognose;" + emptyRest + ";" + csvNum(p.v));
 
     const points = forecast || [];
     let j = 0;
-    for (let i = 0; i < ds.n; i++) {
-      const t = ds.t[i];
-      while (j < points.length && points[j].t < t) forecastOnly(points[j++]);
+    for (;;) {
+      let t = Infinity;
+      for (let k = 0; k < K; k++) {
+        const d = sets[k];
+        if (idx[k] < d.n && d.t[idx[k]] < t) t = d.t[idx[k]];
+      }
+      if (j < points.length && points[j].t < t) {
+        forecastOnly(points[j++]);
+        continue;
+      }
+      if (t === Infinity) break;
+
+      let rest = "";
+      for (let k = 0; k < K; k++) {
+        const d = sets[k];
+        const i = idx[k];
+        if (k) rest += ";";
+        if (i < d.n && d.t[i] === t) {
+          rest += csvNum(d.v[i]) + ";" + TYPE_NAMES[d.type[i]] + ";" + (qcNames[d.q[i]] || "");
+          idx[k]++;
+        } else {
+          rest += ";;";
+        }
+      }
       let forecastText = "";
       if (j < points.length && points[j].t === t) forecastText = csvNum(points[j++].v);
-      add(t, csvNum(ds.v[i]) + ";" + TYPE_NAMES[ds.type[i]] + ";" + (qcNames[ds.q[i]] || "") + ";" + forecastText);
+      add(t, rest + ";" + forecastText);
     }
-    while (j < points.length) forecastOnly(points[j++]);
     close();
     return blocks;
   }
@@ -1115,6 +1158,7 @@
     periodOf,
     fetchRange,
     build15,
+    buildRaw,
     seriesStats,
     parseForecast,
     overlapOf,
@@ -2425,41 +2469,82 @@
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
-  // Laver filen af det, der lige er hentet: 15-minutters datasættet og prognosen.
-  async function downloadExcel(view) {
-    const { series, place, period, ds } = view;
-    const station = series;
+  // Henter de valgte serier i perioden og laver filen. Den viste serie er allerede hentet og genbruges.
+  // Serierne hentes én ad gangen, hver i kvartaler med højst 3 kald ad gangen.
+  async function downloadExcel(view, job) {
+    const { place, period } = view;
+    const list = selectedSeries();
+    if (!list.length) {
+      setStatus('Vælg mindst én serie med "Med i Excel" i tabellen Måleserier.');
+      return;
+    }
+    const raw = $("oplosning").value === "raa";
+    const now = view.fetchedAt;
+    const gapEnd = Math.min(period.end, now - GAP_GRACE);
+
+    $("progressFill").style.width = "0%";
+    $("progress").hidden = false;
+    const sets = [];
+    const missing = [];
+    for (let k = 0; k < list.length; k++) {
+      const s = list[k];
+      const label = `${seriesName(s)} (${k + 1} af ${list.length})`;
+      let obs;
+      if (s === view.series) {
+        obs = view.raw;
+        if (view.failed.length) missing.push(`${seriesName(s)}: ${failedRanges(view.failed).join(", ")}`);
+      } else {
+        let result;
+        try {
+          result = await loadSeries(s, period, job.signal, label);
+        } catch (err) {
+          if (job.signal.aborted) throw err;
+          result = { series: EMPTY_SERIES, failed: [{ start: period.start, end: period.end }] };
+        }
+        if (job.signal.aborted || state.view !== view) return;
+        obs = result.series;
+        if (result.failed.length) missing.push(`${seriesName(s)}: ${failedRanges(result.failed).join(", ")}`);
+      }
+      sets.push(raw ? buildRaw(obs, period.start, period.end) : build15(obs, period.start, period.end, gapEnd));
+    }
+    $("progress").hidden = true;
+
     const forecast = view.forecastState === "ok" ? view.forecast : [];
-    if (!ds.n && !forecast.length) return;
+    if (!sets.some((d) => d.n) && !forecast.length) {
+      setStatus("De valgte serier har ingen målinger i perioden, så der er ingen Excel-fil.");
+      return;
+    }
 
     setStatus("Laver Excel-fil …");
     await new Promise((resolve) => setTimeout(resolve, 30)); // lad teksten nå at blive vist
     if (state.view !== view) return;
 
-    const parts = csvParts(csvBlocks(ds, forecast, QC_NAMES), CSV_MAX_ROWS);
+    const header = csvHeader(list);
+    const parts = csvParts(csvBlocks(sets, forecast, QC_NAMES), CSV_MAX_ROWS);
     const total = parts.reduce((sum, p) => sum + p.rows, 0);
     const type = "text/csv;charset=utf-8";
+    const what = `${list.length} ${list.length === 1 ? "serie" : "serier"}, ${raw ? "rå målinger" : "15 minutter"}`;
     const extra =
-      (view.period.toToday && station.forecast && view.forecastState !== "ok"
+      (period.toToday && view.series.active && view.series.forecast && !isTemperature(view.series) && view.forecastState !== "ok"
         ? " Prognosen er ikke med, fordi den ikke kunne hentes."
-        : "") + (view.failed.length ? " Nogle perioder mangler, se under grafen." : "");
+        : "") + (missing.length ? ` DMI svarede ikke for ${missing.join("; ")}. Det mangler i filen.` : "");
 
     if (parts.length === 1) {
-      const name = csvFileName(place, period.fra, period.til, 1, false, 1, 1);
-      saveFile(new Blob(csvPieces(parts[0], csvHeader([series])), { type }), name);
-      setStatus(`Excel-filen er hentet: ${name} med ${fmtCount(total)} rækker.` + extra);
+      const name = csvFileName(place, period.fra, period.til, list.length, raw, 1, 1);
+      saveFile(new Blob(csvPieces(parts[0], header), { type }), name);
+      setStatus(`Excel-filen er hentet: ${name} med ${fmtCount(total)} rækker (${what}).` + extra);
       return;
     }
 
     // Over 1.000.000 rækker: sig det først, og lad brugeren hente filerne én ad gangen.
     setStatus(
-      `Perioden har ${fmtCount(total)} rækker. Excel kan højst vise 1.048.576 rækker, ` +
+      `Perioden har ${fmtCount(total)} rækker (${what}). Excel kan højst vise 1.048.576 rækker, ` +
         `så filen er delt i ${parts.length} filer på hele år. Hent dem her:` + extra
     );
-    const list = el("ul");
+    const ul = el("ul");
     parts.forEach((part, index) => {
-      const name = csvFileName(place, period.fra, period.til, 1, false, index + 1, parts.length);
-      const url = URL.createObjectURL(new Blob(csvPieces(part, csvHeader([series])), { type }));
+      const name = csvFileName(place, period.fra, period.til, list.length, raw, index + 1, parts.length);
+      const url = URL.createObjectURL(new Blob(csvPieces(part, header), { type }));
       state.blobUrls.push(url);
       const firstYear = part.blocks[0].year;
       const lastYear = part.blocks[part.blocks.length - 1].year;
@@ -2469,11 +2554,11 @@
       link.download = name;
       const item = el("li");
       item.append(link);
-      list.append(item);
+      ul.append(item);
     });
     const box = $("excelParts");
     box.textContent = "";
-    box.append(list);
+    box.append(ul);
     box.hidden = false;
   }
 
