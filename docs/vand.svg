@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <clipPath id="draabe">
+      <path d="M32 6.5C32 6.5 13.5 27 13.5 40.5a18.5 18.5 0 0 0 37 0C50.5 27 32 6.5 32 6.5Z"/>
+    </clipPath>
+  </defs>
+  <path d="M32 6.5C32 6.5 13.5 27 13.5 40.5a18.5 18.5 0 0 0 37 0C50.5 27 32 6.5 32 6.5Z" fill="#FFFFFF"/>
+  <g clip-path="url(#draabe)">
+    <path d="M8 36q3.5-2.6 7 0t7 0 7 0 7 0 7 0 7 0 7 0V64H8Z" fill="#A6DCEC"/>
+    <path d="M8 44q3.5-2.6 7 0t7 0 7 0 7 0 7 0 7 0 7 0V64H8Z" fill="#7ECBE5"/>
+    <path d="M8 52q3.5-2.6 7 0t7 0 7 0 7 0 7 0 7 0 7 0V64H8Z" fill="#2AA5DD"/>
+    <g fill="none" stroke="#1673B9" stroke-width="2.2" stroke-linecap="round">
+      <path d="M8 36q3.5-2.6 7 0t7 0 7 0 7 0 7 0 7 0 7 0"/>
+      <path d="M8 44q3.5-2.6 7 0t7 0 7 0 7 0 7 0 7 0 7 0"/>
+      <path d="M8 52q3.5-2.6 7 0t7 0 7 0 7 0 7 0 7 0 7 0"/>
+    </g>
+  </g>
+  <path d="M32 6.5C32 6.5 13.5 27 13.5 40.5a18.5 18.5 0 0 0 37 0C50.5 27 32 6.5 32 6.5Z" fill="none" stroke="#1673B9" stroke-width="4" stroke-linejoin="round"/>
+</svg>
