@@ -850,7 +850,25 @@
   // Excel-fil: CSV med semikolon, decimalkomma, CRLF og UTF-8 med BOM
   // ====================================================================
 
+  // Stationer ejet af havne og kommuner måler sea_reg, men DMI dokumenterer ikke nulpunktet.
+  const OWNER_HARBOUR = "Havn/kommune";
+
+  function datumKnown(station) {
+    return !station || station.owner !== OWNER_HARBOUR;
+  }
+
+  // Enheden for målt vandstand: "cm DVR90", eller "cm", når nulpunktet ikke er dokumenteret
+  function levelUnit(station) {
+    return datumKnown(station) ? "cm DVR90" : "cm";
+  }
+
   const CSV_HEADER = "Tid UTC;Tid dansk;Vandstand cm DVR90;Type;qcStatus;Prognose cm (middelvandstand)";
+  const CSV_HEADER_NO_DATUM =
+    "Tid UTC;Tid dansk;Vandstand cm (nulpunkt ikke dokumenteret);Type;qcStatus;Prognose cm (middelvandstand)";
+
+  function csvHeader(station) {
+    return datumKnown(station) ? CSV_HEADER : CSV_HEADER_NO_DATUM;
+  }
   const CSV_MAX_ROWS = 1000000; // Excel kan højst vise 1.048.576 rækker
   const CRLF = "\r\n";
   const BOM = String.fromCharCode(0xfeff);
@@ -927,8 +945,8 @@
   }
 
   // Indholdet af én fil som en liste af tekststykker (til en Blob)
-  function csvPieces(part) {
-    return [BOM + CSV_HEADER + CRLF].concat(part.blocks.map((b) => b.text));
+  function csvPieces(part, station) {
+    return [BOM + csvHeader(station) + CRLF].concat(part.blocks.map((b) => b.text));
   }
 
   function slug(name) {
@@ -970,6 +988,11 @@
     chartPoints,
     timeTicks,
     CSV_HEADER,
+    CSV_HEADER_NO_DATUM,
+    OWNER_HARBOUR,
+    datumKnown,
+    levelUnit,
+    csvHeader,
     csvBlocks,
     csvParts,
     csvPieces,
@@ -1267,7 +1290,12 @@
     $("backLink").href = state.lastPostnr ? "#postnr=" + state.lastPostnr : "#";
 
     $("stName").textContent = station.name;
-    const datum = station.parameter === "sealev_dvr" ? "sealev_dvr, DVR90" : `${station.parameter}, DVR90 ifølge DMI`;
+    $("tableUnit").textContent = "Vandstand " + levelUnit(station);
+    const datum = !datumKnown(station)
+      ? `${station.parameter}, nulpunkt ikke dokumenteret af DMI`
+      : station.parameter === "sealev_dvr"
+        ? "sealev_dvr, DVR90"
+        : `${station.parameter}, DVR90 ifølge DMI`;
     const from = stationFrom(station);
     const facts = $("stFacts");
     facts.textContent = "";
@@ -1295,7 +1323,9 @@
     $("stSource").textContent =
       (station.owner === "DMI"
         ? "Kilde til målingerne: DMI."
-        : `Kilde til målingerne: DMI og ${station.owner}, som ejer stationen.`) +
+        : station.owner === OWNER_HARBOUR
+          ? "Kilde til målingerne: DMI og havnen eller kommunen, som ejer stationen."
+          : `Kilde til målingerne: DMI og ${station.owner}, som ejer stationen.`) +
       " Kilde til prognosen: DMI's stormflodsmodel DKSS.";
 
     renderLatest();
@@ -1357,7 +1387,7 @@
     }
 
     $("nowValue").textContent = fmtLevel(latest.v);
-    $("nowUnit").textContent = "cm DVR90";
+    $("nowUnit").textContent = levelUnit(state.station);
 
     if (Date.now() - latest.t > STALE_AFTER) {
       time.textContent = `Ingen ny måling siden ${fmtDateTime(latest.t)}`;
@@ -1441,7 +1471,7 @@
     parts.push(`<rect x="${left}" y="${y0 - 1}" width="${boardW}" height="2" fill="${wetZero ? "#FFFFFF" : INK}"/>`);
     parts.push(`<rect x="${left + boardW}" y="${y0 - 1}" width="6" height="2" fill="${INK}"/>`);
     parts.push(
-      `<text x="${labelX}" y="${y0 + font * 0.35}" font-size="${font}" font-weight="600" fill="${INK}">0 DVR90</text>`
+      `<text x="${labelX}" y="${y0 + font * 0.35}" font-size="${font}" font-weight="600" fill="${INK}">${datumKnown(state.station) ? "0 DVR90" : "0"}</text>`
     );
 
     parts.push(
@@ -1463,7 +1493,7 @@
     }
 
     const label =
-      (value === null ? "Vandstandsbræt uden måling." : `Vandstandsbræt. Seneste måling ${fmtLevel(value)} cm DVR90.`) +
+      (value === null ? "Vandstandsbræt uden måling." : `Vandstandsbræt. Seneste måling ${fmtLevel(value)} ${levelUnit(state.station)}.`) +
       limitLabel;
     box.innerHTML =
       `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H + 2 * pad}" viewBox="0 0 ${W} ${H + 2 * pad}" ` +
@@ -1815,7 +1845,8 @@
     // Forklaringen står som tekst med små linjestykker over grafen
     const legend = $("legend");
     legend.textContent = "";
-    legend.append(legendItem("", "Målt (cm DVR90)"));
+    const unit = levelUnit(view.station);
+    legend.append(legendItem("", `Målt (${unit})`));
     if (forecast.length) legend.append(legendItem("key-forecast", "Prognose (cm, middelvandstand)"));
     if (hasLimit) legend.append(legendItem("key-limit", "Grænse"));
 
@@ -1945,7 +1976,7 @@
                   if (over) lines.push("Over grænsen (prognose, andet nulpunkt)");
                   return lines;
                 }
-                const lines = [`${fmtLevel(p.y)} cm DVR90, ${TYPE_NAMES[p.k]}`];
+                const lines = [`${fmtLevel(p.y)} ${unit}, ${TYPE_NAMES[p.k]}`];
                 if (over) lines.push("Over grænsen");
                 return lines;
               },
@@ -2030,7 +2061,10 @@
       (km > 5 ? " Modelpunktet ligger langt fra stationen, så prognosen kan afvige meget fra vandstanden her." : "");
 
     const o = overlapOf(view.ds, view.forecast);
-    const basis = " Måling er i DVR90, prognose er afvigelse fra middelvandstand. Prognosen er ikke justeret.";
+    const basis = datumKnown(station)
+      ? " Måling er i DVR90, prognose er afvigelse fra middelvandstand. Prognosen er ikke justeret."
+      : " DMI dokumenterer ikke målingens nulpunkt, og prognosen er afvigelse fra middelvandstand. " +
+        "Forskellen kan derfor skyldes forskellige nulpunkter. Prognosen er ikke justeret.";
     if (o.n === 0) {
       overlapNote.textContent = "Der er endnu ingen timer med både måling og prognose, så forskellen kan ikke beregnes." + basis;
       return;
@@ -2085,7 +2119,7 @@
 
     if (parts.length === 1) {
       const name = csvFileName(station, period.fra, period.til, 1, 1);
-      saveFile(new Blob(csvPieces(parts[0]), { type }), name);
+      saveFile(new Blob(csvPieces(parts[0], station), { type }), name);
       setStatus(`Excel-filen er hentet: ${name} med ${fmtCount(total)} rækker.` + extra);
       return;
     }
@@ -2098,7 +2132,7 @@
     const list = el("ul");
     parts.forEach((part, index) => {
       const name = csvFileName(station, period.fra, period.til, index + 1, parts.length);
-      const url = URL.createObjectURL(new Blob(csvPieces(part), { type }));
+      const url = URL.createObjectURL(new Blob(csvPieces(part, station), { type }));
       state.blobUrls.push(url);
       const firstYear = part.blocks[0].year;
       const lastYear = part.blocks[part.blocks.length - 1].year;
